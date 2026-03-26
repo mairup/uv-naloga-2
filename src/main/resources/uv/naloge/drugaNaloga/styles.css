@@ -322,6 +322,46 @@
   -fx-text-fill: #ffffff;
 }
 
+.history-tiles-shell {
+  -fx-background-color: #f8f5ed;
+  -fx-border-color: transparent;
+  -fx-border-width: 0;
+  -fx-background-radius: 8;
+  -fx-border-radius: 8;
+  -fx-padding: 10;
+}
+
+.history-tiles-container {
+  -fx-spacing: 8;
+}
+
+.history-tile {
+  -fx-alignment: center-left;
+  -fx-background-color: rgba(234, 208, 194, 0.82);
+  -fx-border-color: #d5c2b0;
+  -fx-border-width: 1;
+  -fx-background-radius: 7;
+  -fx-border-radius: 7;
+  -fx-padding: 7 8;
+}
+
+.history-tile-value {
+  -fx-text-fill: #3a2a23;
+  -fx-font-size: 12px;
+}
+
+.history-tile-arrow {
+  -fx-text-fill: #7a655a;
+  -fx-font-size: 13px;
+  -fx-font-weight: bold;
+}
+
+.restore-history-button {
+  -fx-font-size: 11px;
+  -fx-padding: 3 8;
+  -fx-background-radius: 5;
+}
+
 .check-box .box {
   -fx-background-color: #ead0c2;
   -fx-border-color: #cfae9f;

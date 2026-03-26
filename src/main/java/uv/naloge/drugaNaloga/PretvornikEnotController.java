@@ -1,15 +1,24 @@
 package uv.naloge.drugaNaloga;
 
 import java.awt.Desktop;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import org.kordamp.ikonli.javafx.FontIcon;
 
@@ -25,6 +34,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import javafx.util.Duration;
 
 public class PretvornikEnotController {
 
@@ -46,6 +56,7 @@ public class PretvornikEnotController {
 
     private static final String AUTHOR_INFORMATION = "Avtor: Mai Rupnik, 2. letnik, BVS-RI @ FRI, UNI-LJ";
     private static final String PROJECT_URL = "https://github.com/mairup/uv-naloga-2";
+    private static final String HISTORY_FILE_DELIMITER = "\t";
 
     @FXML
     private TextField firstValueTextField;
@@ -63,7 +74,7 @@ public class PretvornikEnotController {
     private ComboBox<String> secondUnitComboBox;
 
     @FXML
-    private TextArea conversionHistoryTextArea;
+    private VBox historyTilesContainer;
 
     @FXML
     private TextArea eventLogTextArea;
@@ -95,14 +106,19 @@ public class PretvornikEnotController {
     @FXML
     private Button directionToggleButton;
 
+    @FXML
+    private ScrollPane centerContentScrollPane;
+
     private final Map<String, List<String>> unitsByCategory = new LinkedHashMap<>();
-    private final DecimalFormat numberFormatter = new DecimalFormat("0.########", DecimalFormatSymbols.getInstance());
+    private final DecimalFormat numberFormatter = new DecimalFormat("0.####", DecimalFormatSymbols.getInstance());
     private final DateTimeFormatter timestampFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private final ObservableList<HistoryEntry> historyEntries = FXCollections.observableArrayList();
     private boolean isFirstToSecondConversion = true;
 
     public void initialize() {
         initializeCategoriesAndUnits();
         initializeToolbarIcons();
+        renderHistoryTiles();
         updateDirectionToggleState();
         statusLabel.setText("Pripravljeno.");
         appendEventLog("Aplikacija je pripravljena za delo.");
@@ -225,13 +241,78 @@ public class PretvornikEnotController {
 
         double convertedValue = convertValue(selectedCategory, selectedSourceUnit, selectedTargetUnit,
                 inputNumericValue);
-        String conversionInput = formatNumber(inputNumericValue) + " " + selectedSourceUnit;
-        String conversionOutput = formatNumber(convertedValue) + " " + selectedTargetUnit;
-        String conversionEntry = conversionInput + " -> " + conversionOutput;
+        String sourceValueText = formatNumber(inputNumericValue);
+        String targetValueText = formatNumber(convertedValue);
 
-        targetValueField.setText(formatNumber(convertedValue));
-        appendConversionToHistory(conversionEntry);
+        HistoryEntry historyEntry = new HistoryEntry(
+                sourceValueText,
+                selectedSourceUnit,
+                targetValueText,
+                selectedTargetUnit);
+        String conversionEntry = historyEntry.getFirstDisplay() + " -> " + historyEntry.getSecondDisplay();
+
+        targetValueField.setText(targetValueText);
+        appendConversionToHistory(historyEntry);
         updateStatusAndLog("Izvedena pretvorba: " + conversionEntry + ".");
+    }
+
+    private void restoreHistoryEntry(HistoryEntry entry) {
+        if (pane1 != null && !pane1.isExpanded()) {
+            pane1.setExpanded(true);
+            appendEventLog("Ob obnovitvi je bil odprt razdelek Pretvornik enot.");
+        }
+
+        if (!isFirstToSecondConversion) {
+            isFirstToSecondConversion = true;
+            updateDirectionToggleState();
+            appendEventLog("Smer pretvorbe je bila ob obnovitvi nastavljena navzdol.");
+        }
+
+        firstValueTextField.setText(entry.getFirstValueText());
+        secondValueTextField.setText(entry.getSecondValueText());
+        selectUnitIfAvailable(firstUnitComboBox, entry.getFirstUnit());
+        selectUnitIfAvailable(secondUnitComboBox, entry.getSecondUnit());
+        scrollConverterIntoView();
+
+        updateStatusAndLog("Obnovljena pretvorba: " + entry.getFirstDisplay() + " -> " + entry.getSecondDisplay()
+                + ".");
+    }
+
+    private void scrollConverterIntoView() {
+        if (centerContentScrollPane == null) {
+            return;
+        }
+
+        Runnable scrollAction = () -> Platform.runLater(() -> centerContentScrollPane.setVvalue(0.0));
+
+        if (pane1 != null && !pane1.isExpanded()) {
+            ChangeListener<Boolean> expansionListener = new ChangeListener<>() {
+                @Override
+                public void changed(javafx.beans.value.ObservableValue<? extends Boolean> observable,
+                        Boolean oldValue, Boolean newValue) {
+                    if (Boolean.TRUE.equals(newValue)) {
+                        pane1.expandedProperty().removeListener(this);
+                        runDelayedScroll(scrollAction);
+                    }
+                }
+            };
+            pane1.expandedProperty().addListener(expansionListener);
+            return;
+        }
+
+        runDelayedScroll(scrollAction);
+    }
+
+    private void runDelayedScroll(Runnable scrollAction) {
+        PauseTransition pauseTransition = new PauseTransition(Duration.millis(350));
+        pauseTransition.setOnFinished(event -> scrollAction.run());
+        pauseTransition.play();
+    }
+
+    private void selectUnitIfAvailable(ComboBox<String> comboBox, String unit) {
+        if (comboBox.getItems().contains(unit)) {
+            comboBox.getSelectionModel().select(unit);
+        }
     }
 
     private TextField getCurrentSourceValueField() {
@@ -359,10 +440,28 @@ public class PretvornikEnotController {
         }
 
         try {
-            String fileContent = Files.readString(selectedFile.toPath(), StandardCharsets.UTF_8);
-            conversionHistoryTextArea.setText(fileContent);
+            List<String> lines = Files.readAllLines(selectedFile.toPath(), StandardCharsets.UTF_8);
+            historyEntries.clear();
+
+            int loadedEntries = 0;
+            for (String rawLine : lines) {
+                String line = rawLine.trim();
+                if (line.isEmpty() || line.startsWith("#")) {
+                    continue;
+                }
+
+                HistoryEntry parsedEntry = parseHistoryLine(line);
+                if (parsedEntry != null) {
+                    historyEntries.add(parsedEntry);
+                    loadedEntries++;
+                }
+            }
+
+            renderHistoryTiles();
+
             long fileSize = Files.size(selectedFile.toPath());
-            updateStatusAndLog("Odprta datoteka: " + selectedFile.getName() + " (" + fileSize + " B).");
+            updateStatusAndLog("Odprta datoteka: " + selectedFile.getName() + " (" + fileSize + " B), "
+                    + loadedEntries + " zapisov.");
         } catch (IOException exception) {
             updateStatusAndLog("Napaka pri odpiranju datoteke: " + exception.getMessage());
         }
@@ -381,7 +480,7 @@ public class PretvornikEnotController {
         }
 
         try {
-            Files.writeString(selectedFile.toPath(), conversionHistoryTextArea.getText(), StandardCharsets.UTF_8);
+            Files.writeString(selectedFile.toPath(), serializeHistoryEntries(), StandardCharsets.UTF_8);
             long fileSize = Files.size(selectedFile.toPath());
             updateStatusAndLog("Shranjen zapis: " + selectedFile.getName() + " (" + fileSize + " B).");
         } catch (IOException exception) {
@@ -393,7 +492,8 @@ public class PretvornikEnotController {
     private void onClearAllClick() {
         firstValueTextField.clear();
         secondValueTextField.clear();
-        conversionHistoryTextArea.clear();
+        historyEntries.clear();
+        renderHistoryTiles();
         updateStatusAndLog("Vnos in zgodovina pretvorb sta pobrisana.");
     }
 
@@ -450,12 +550,79 @@ public class PretvornikEnotController {
         Platform.exit();
     }
 
-    private void appendConversionToHistory(String historyEntry) {
-        if (conversionHistoryTextArea.getText().isBlank()) {
-            conversionHistoryTextArea.setText(historyEntry);
-            return;
+    private void appendConversionToHistory(HistoryEntry historyEntry) {
+        historyEntries.add(historyEntry);
+        addHistoryTile(historyEntry);
+        appendEventLog("Dodan zapis v zgodovino: " + historyEntry.getFirstDisplay() + " -> "
+                + historyEntry.getSecondDisplay() + ".");
+    }
+
+    private String serializeHistoryEntries() {
+        StringBuilder outputBuilder = new StringBuilder();
+        outputBuilder.append("# firstValue\tfirstUnit\tsecondValue\tsecondUnit");
+
+        for (HistoryEntry entry : historyEntries) {
+            outputBuilder
+                    .append(System.lineSeparator())
+                    .append(entry.getFirstValueText())
+                    .append(HISTORY_FILE_DELIMITER)
+                    .append(entry.getFirstUnit())
+                    .append(HISTORY_FILE_DELIMITER)
+                    .append(entry.getSecondValueText())
+                    .append(HISTORY_FILE_DELIMITER)
+                    .append(entry.getSecondUnit());
         }
-        conversionHistoryTextArea.appendText(System.lineSeparator() + historyEntry);
+
+        return outputBuilder.toString();
+    }
+
+    private HistoryEntry parseHistoryLine(String line) {
+        String[] parts = line.split(HISTORY_FILE_DELIMITER);
+        if (parts.length >= 4) {
+            return new HistoryEntry(
+                    normalizeNumericText(parts[0].trim()),
+                    parts[1].trim(),
+                    normalizeNumericText(parts[2].trim()),
+                    parts[3].trim());
+        }
+
+        if (!line.contains("->")) {
+            appendEventLog("Preskocena neveljavna vrstica zgodovine: " + line);
+            return null;
+        }
+
+        String[] legacyParts = line.split("->");
+        if (legacyParts.length != 2) {
+            appendEventLog("Preskocena neveljavna vrstica zgodovine: " + line);
+            return null;
+        }
+
+        String[] firstSide = splitLegacyDisplayPart(legacyParts[0].trim());
+        String[] secondSide = splitLegacyDisplayPart(legacyParts[1].trim());
+        return new HistoryEntry(
+                normalizeNumericText(firstSide[0]),
+                firstSide[1],
+                normalizeNumericText(secondSide[0]),
+                secondSide[1]);
+    }
+
+    private String normalizeNumericText(String numericText) {
+        try {
+            return formatNumber(Double.parseDouble(numericText.replace(',', '.')));
+        } catch (NumberFormatException exception) {
+            return numericText;
+        }
+    }
+
+    private String[] splitLegacyDisplayPart(String displayPart) {
+        int lastSpaceIndex = displayPart.lastIndexOf(' ');
+        if (lastSpaceIndex <= 0 || lastSpaceIndex >= displayPart.length() - 1) {
+            return new String[] { displayPart, "" };
+        }
+
+        String numericPart = displayPart.substring(0, lastSpaceIndex).trim();
+        String unitPart = displayPart.substring(lastSpaceIndex + 1).trim();
+        return new String[] { numericPart, unitPart };
     }
 
     private String formatNumber(double numberValue) {
@@ -475,6 +642,89 @@ public class PretvornikEnotController {
             return;
         }
         eventLogTextArea.appendText(System.lineSeparator() + logEntry);
+    }
+
+    private void renderHistoryTiles() {
+        if (historyTilesContainer == null) {
+            return;
+        }
+
+        historyTilesContainer.getChildren().clear();
+        for (HistoryEntry entry : historyEntries) {
+            addHistoryTile(entry);
+        }
+    }
+
+    private void addHistoryTile(HistoryEntry entry) {
+        if (historyTilesContainer == null) {
+            return;
+        }
+
+        HBox tileRow = new HBox(10);
+        tileRow.getStyleClass().add("history-tile");
+
+        Label firstValueLabel = new Label(entry.getFirstDisplay());
+        firstValueLabel.getStyleClass().add("history-tile-value");
+
+        Label arrowLabel = new Label("→");
+        arrowLabel.getStyleClass().add("history-tile-arrow");
+
+        Label secondValueLabel = new Label(entry.getSecondDisplay());
+        secondValueLabel.getStyleClass().add("history-tile-value");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button restoreButton = new Button("Obnovi");
+        restoreButton.getStyleClass().addAll("btn", "btn-default", "restore-history-button");
+        restoreButton.setOnAction(event -> restoreHistoryEntry(entry));
+
+        tileRow.getChildren().addAll(firstValueLabel, arrowLabel, secondValueLabel, spacer, restoreButton);
+        historyTilesContainer.getChildren().add(tileRow);
+    }
+
+    private static final class HistoryEntry {
+        private final String firstValueText;
+        private final String firstUnit;
+        private final String secondValueText;
+        private final String secondUnit;
+
+        private HistoryEntry(String firstValueText, String firstUnit, String secondValueText, String secondUnit) {
+            this.firstValueText = firstValueText;
+            this.firstUnit = firstUnit;
+            this.secondValueText = secondValueText;
+            this.secondUnit = secondUnit;
+        }
+
+        private String getFirstValueText() {
+            return firstValueText;
+        }
+
+        private String getFirstUnit() {
+            return firstUnit;
+        }
+
+        private String getSecondValueText() {
+            return secondValueText;
+        }
+
+        private String getSecondUnit() {
+            return secondUnit;
+        }
+
+        private String getFirstDisplay() {
+            if (firstUnit == null || firstUnit.isBlank()) {
+                return firstValueText;
+            }
+            return firstValueText + " " + firstUnit;
+        }
+
+        private String getSecondDisplay() {
+            if (secondUnit == null || secondUnit.isBlank()) {
+                return secondValueText;
+            }
+            return secondValueText + " " + secondUnit;
+        }
     }
 
 }

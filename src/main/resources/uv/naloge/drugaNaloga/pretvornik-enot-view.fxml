@@ -57,7 +57,7 @@
     </top>
 
     <center>
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="NEVER" styleClass="content-scroll">
+        <ScrollPane fx:id="centerContentScrollPane" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="NEVER" styleClass="content-scroll">
             <content>
                 <VBox style="-fx-padding: 12;" spacing="10.0">
                     <VBox VBox.vgrow="ALWAYS" maxWidth="Infinity" styleClass="custom-accordion" spacing="10.0">
@@ -132,7 +132,9 @@
                                 <padding>
                                     <Insets top="12" right="12" bottom="12" left="12" />
                                 </padding>
-                                <TextArea fx:id="conversionHistoryTextArea" prefHeight="220.0" wrapText="true" styleClass="pane-body-content" VBox.vgrow="ALWAYS" />
+                                <VBox styleClass="converter-section,history-tiles-shell" VBox.vgrow="ALWAYS">
+                                    <VBox fx:id="historyTilesContainer" spacing="8.0" styleClass="history-tiles-container" VBox.vgrow="ALWAYS" />
+                                </VBox>
                             </VBox>
                         </content>
                     </TitledPane>
