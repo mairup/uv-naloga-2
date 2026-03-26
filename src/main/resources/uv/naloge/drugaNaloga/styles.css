@@ -30,7 +30,7 @@
 }
 
 .earth-menu-bar .context-menu {
-  -fx-background-color: #bad3c0;
+  -fx-background-color: #e4efdf;
 }
 
 .earth-menu-bar .menu-item .label {
@@ -38,7 +38,7 @@
 }
 
 .earth-menu-bar .menu-item:focused {
-  -fx-background-color: #a4c4ac;
+  -fx-background-color: #cfe2c7;
 }
 .earth-menu-bar .menu-item:focused .label {
   -fx-text-fill: #1a361f;
@@ -98,6 +98,16 @@
   -fx-max-width: Infinity;
 }
 
+.custom-accordion-pane > .title > .arrow-button {
+  -fx-background-color: transparent;
+  -fx-effect: null;
+}
+
+.custom-accordion-pane > .title > .arrow-button .arrow {
+  -fx-background-color: #2f221d;
+  -fx-effect: null;
+}
+
 .custom-accordion-pane:collapsed > .title {
   -fx-background-radius: 8;
   -fx-border-radius: 8;
@@ -140,6 +150,14 @@
   -fx-background-color: transparent;
 }
 
+.pane-body-content {
+  -fx-text-fill: #3a312d;
+}
+
+.pane-body-content .text {
+  -fx-fill: #3a312d;
+}
+
 .btn {
   -fx-background-radius: 6;
   -fx-border-radius: 6;
@@ -150,6 +168,14 @@
 .toolbar-action-button {
   -fx-font-size: 15px;
   -fx-padding: 8 14;
+}
+
+.toolbar-action-button .ikonli-font-icon {
+  -fx-icon-color: #2f221d;
+}
+
+.toolbar-action-button:hover .ikonli-font-icon {
+  -fx-icon-color: #ffffff;
 }
 
 .button.btn-default {
@@ -196,11 +222,11 @@
 }
 
 .status-label {
-  -fx-background-color: #f4efe4;
-  -fx-border-color: #d3c8b7;
-  -fx-border-width: 1 0 0 0;
-  -fx-text-fill: #2e2e2e;
+  -fx-background-color: transparent;
+  -fx-border-color: transparent;
+  -fx-border-width: 0;
+  -fx-text-fill: #1a301a;
   -fx-font-size: 12px;
-  -fx-font-weight: bold;
-  -fx-padding: 6 10;
+  -fx-font-weight: normal;
+  -fx-padding: 4 8 4 0;
 }

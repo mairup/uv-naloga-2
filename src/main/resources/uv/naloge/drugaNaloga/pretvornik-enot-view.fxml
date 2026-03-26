@@ -148,7 +148,7 @@
     <bottom>
         <Label fx:id="statusLabel" styleClass="status-label" text="Pripravljeno." BorderPane.alignment="CENTER_LEFT">
             <BorderPane.margin>
-                <Insets top="4" right="10" bottom="6" left="10" />
+                <Insets left="10" bottom="5" />
             </BorderPane.margin>
         </Label>
     </bottom>
