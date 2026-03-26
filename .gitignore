@@ -21,3 +21,6 @@ hs_err_pid*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Other
+PROJECT_PREFERENCES.md
