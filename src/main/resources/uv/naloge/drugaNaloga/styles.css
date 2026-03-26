@@ -1,0 +1,206 @@
+.root {
+  -fx-font-family: "Segoe UI", sans-serif;
+  -fx-accent: #5b7f5e;
+  -fx-focus-color: #5b7f5e;
+  -fx-faint-focus-color: #5b7f5e33;
+}
+
+.earth-root {
+  -fx-background-color: #a8bea3;
+}
+
+.earth-menu-bar {
+  -fx-background-color: #93ac8e;
+  -fx-border-color: #7b9176;
+  -fx-border-width: 0 0 1 0;
+}
+
+.earth-menu-bar .label {
+  -fx-text-fill: #243326;
+}
+
+.earth-menu-bar .menu:hover,
+.earth-menu-bar .menu:showing {
+  -fx-background-color: #5b7f5e;
+}
+
+.earth-menu-bar .menu:hover .label,
+.earth-menu-bar .menu:showing .label {
+  -fx-text-fill: #f5f7f2;
+}
+
+.earth-menu-bar .context-menu {
+  -fx-background-color: #bad3c0;
+}
+
+.earth-menu-bar .menu-item .label {
+  -fx-text-fill: #1a361f;
+}
+
+.earth-menu-bar .menu-item:focused {
+  -fx-background-color: #a4c4ac;
+}
+.earth-menu-bar .menu-item:focused .label {
+  -fx-text-fill: #1a361f;
+}
+
+.earth-menu-bar .menu-item:hovered .label,
+.earth-menu-bar .menu-item:armed .label,
+.earth-menu-bar .menu-item:focused .label,
+.earth-menu-bar .context-menu .menu-item .label,
+.earth-menu-bar .context-menu .menu-item:focused .label,
+.earth-menu-bar .context-menu .menu-item:hovered .label,
+.earth-menu-bar .context-menu .menu-item:armed .label {
+  -fx-text-fill: #1a361f;
+}
+
+.tool-bar.earth-toolbar {
+  -fx-background-color: #f4efe4;
+  -fx-border-color: #d3c8b7;
+  -fx-border-width: 1;
+  -fx-background-radius: 8;
+  -fx-border-radius: 8;
+  -fx-padding: 8 10;
+  -fx-spacing: 8;
+}
+
+.floating-toolbar-wrapper {
+  -fx-padding: 10 10 8 10;
+}
+
+.floating-toolbar {
+  -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.08), 8, 0, 0, 2);
+}
+
+.custom-accordion {
+  -fx-background-color: transparent;
+}
+
+.custom-accordion-pane {
+  -fx-max-width: Infinity;
+  -fx-background-color: #f8f5ed;
+  -fx-border-color: #d3c8b7;
+  -fx-border-width: 1;
+  -fx-background-radius: 8;
+  -fx-border-radius: 8;
+}
+
+.custom-accordion-pane > .title {
+  -fx-background-color: #e9e1d3;
+  -fx-border-color: transparent;
+  -fx-border-width: 0;
+  -fx-background-radius: 8;
+  -fx-border-radius: 8;
+  -fx-padding: 10 14;
+  -fx-text-fill: #2f3a2e;
+  -fx-font-weight: bold;
+  -fx-font-size: 15px;
+  -fx-max-width: Infinity;
+}
+
+.custom-accordion-pane:collapsed > .title {
+  -fx-background-radius: 8;
+  -fx-border-radius: 8;
+}
+
+.custom-accordion-pane > *.content {
+  -fx-background-color: transparent;
+  -fx-background-radius: 0 0 8 8;
+  -fx-border-color: transparent;
+  -fx-border-width: 0;
+  -fx-padding: 0;
+}
+
+.pane-content-shell {
+  -fx-background-color: transparent;
+  -fx-background-radius: 0 0 8 8;
+  -fx-border-radius: 0 0 8 8;
+  -fx-border-color: transparent;
+  -fx-border-width: 0;
+  -fx-padding: 0;
+}
+
+.pane-body-content {
+  -fx-background-color: transparent;
+  -fx-border-color: transparent;
+  -fx-border-width: 0;
+  -fx-background-insets: 0;
+}
+
+.pane-body-content.text-area {
+  -fx-control-inner-background: transparent;
+  -fx-background-color: transparent;
+}
+
+.pane-body-content.text-area .viewport {
+  -fx-background-color: transparent;
+}
+
+.pane-body-content.text-area .content {
+  -fx-background-color: transparent;
+}
+
+.btn {
+  -fx-background-radius: 6;
+  -fx-border-radius: 6;
+  -fx-font-weight: bold;
+  -fx-cursor: hand;
+}
+
+.toolbar-action-button {
+  -fx-font-size: 15px;
+  -fx-padding: 8 14;
+}
+
+.button.btn-default {
+  -fx-background-color: #ddb7a6;
+  -fx-border-color: #bf9685;
+  -fx-text-fill: #3a2a23;
+}
+
+.button.btn-default:hover {
+  -fx-background-color: #cf9a84;
+  -fx-text-fill: #ffffff;
+}
+
+.button.btn-success {
+  -fx-background-color: #4d7750;
+  -fx-text-fill: #ffffff;
+}
+
+.button.btn-success:hover {
+  -fx-background-color: #3f6242;
+}
+
+.keypad-button {
+  -fx-min-width: 70;
+  -fx-min-height: 40;
+}
+
+.convert-button {
+  -fx-min-width: 150;
+  -fx-min-height: 86;
+}
+
+.earth-input {
+  -fx-background-color: #f7e9df;
+  -fx-control-inner-background: #f7e9df;
+  -fx-border-color: #cdbfae;
+  -fx-background-radius: 6;
+  -fx-border-radius: 6;
+  -fx-text-fill: #2f2f2f;
+}
+
+.earth-input:focused {
+  -fx-border-color: #5b7f5e;
+}
+
+.status-label {
+  -fx-background-color: #f4efe4;
+  -fx-border-color: #d3c8b7;
+  -fx-border-width: 1 0 0 0;
+  -fx-text-fill: #2e2e2e;
+  -fx-font-size: 12px;
+  -fx-font-weight: bold;
+  -fx-padding: 6 10;
+}

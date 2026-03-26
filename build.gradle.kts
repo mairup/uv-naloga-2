@@ -1,9 +1,9 @@
 plugins {
     java
     application
-    id("org.javamodularity.moduleplugin") version "1.8.15"
-    id("org.openjfx.javafxplugin") version "0.0.13"
-    id("org.beryx.jlink") version "2.25.0"
+    id("org.openjfx.javafxplugin") version "0.0.14"
+    id("org.beryx.jlink") version "2.26.0"
+    idea
 }
 
 group = "uv.naloge.druga"
@@ -21,13 +21,12 @@ java {
     }
 }
 
-tasks.withType<JavaCompile> {
+tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
 }
 
 application {
-    mainModule.set("uv.naloge.druga.druganaloga")
-    mainClass.set("uv.naloge.druga.druganaloga.HelloApplication")
+    mainClass.set("uv.naloge.drugaNaloga.PretvornikEnotApplication")
 }
 
 javafx {
@@ -37,6 +36,7 @@ javafx {
 
 dependencies {
     implementation("org.kordamp.ikonli:ikonli-javafx:12.3.1")
+    implementation("org.kordamp.ikonli:ikonli-fontawesome5-pack:12.3.1")
     implementation("org.kordamp.bootstrapfx:bootstrapfx-core:0.4.0")
     testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
@@ -47,7 +47,7 @@ tasks.withType<Test> {
 }
 
 jlink {
-    imageZip.set(layout.buildDirectory.file("/distributions/app-${javafx.platform.classifier}.zip"))
+    imageZip.set(layout.buildDirectory.file("distributions/app-${javafx.platform.classifier}.zip"))
     options.set(listOf("--strip-debug", "--compress", "2", "--no-header-files", "--no-man-pages"))
     launcher {
         name = "app"

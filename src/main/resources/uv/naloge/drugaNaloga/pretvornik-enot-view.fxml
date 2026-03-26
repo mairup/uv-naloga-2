@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="uv.naloge.drugaNaloga.PretvornikEnotController"
+            prefWidth="1100.0" prefHeight="760.0"
+            styleClass="earth-root">
+
+    <top>
+        <VBox spacing="0.0">
+            <MenuBar styleClass="earth-menu-bar">
+                <Menu text="_Datoteka">
+                    <MenuItem text="_Odpri" onAction="#onOpenClick" />
+                    <MenuItem text="_Shrani" onAction="#onSaveClick" />
+                    <MenuItem text="I_zhod" onAction="#onExitClick" />
+                </Menu>
+                <Menu text="_Uredi">
+                    <MenuItem text="_Pobrisi" onAction="#onClearAllClick" />
+                </Menu>
+                <Menu text="_Pomoc">
+                    <MenuItem text="_Avtor" onAction="#onAuthorClick" />
+                </Menu>
+            </MenuBar>
+
+            <HBox styleClass="floating-toolbar-wrapper">
+                <ToolBar styleClass="earth-toolbar,floating-toolbar" HBox.hgrow="ALWAYS">
+                    <Button fx:id="openToolbarButton" text="Odpri" onAction="#onOpenClick" styleClass="btn,btn-default,toolbar-action-button" />
+                    <Button fx:id="saveToolbarButton" text="Shrani" onAction="#onSaveClick" styleClass="btn,btn-default,toolbar-action-button" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Button fx:id="clearToolbarButton" text="Pobrisi" onAction="#onClearAllClick" styleClass="btn,btn-default,toolbar-action-button" />
+                    <Button fx:id="exitToolbarButton" text="Izhod" onAction="#onExitClick" styleClass="btn,btn-default,toolbar-action-button" />
+                </ToolBar>
+            </HBox>
+        </VBox>
+    </top>
+
+    <center>
+        <VBox style="-fx-padding: 12;" spacing="10.0">
+            <VBox VBox.vgrow="ALWAYS" maxWidth="Infinity" styleClass="custom-accordion" spacing="10.0">
+                    <TitledPane fx:id="pane1" text="Pretvornik enot" expanded="true" maxWidth="Infinity" styleClass="custom-accordion-pane">
+                        <content>
+                            <VBox styleClass="pane-content-shell">
+                                <GridPane hgap="10.0" vgap="10.0" styleClass="pane-body-content">
+                                    <padding>
+                                        <Insets top="12" right="12" bottom="12" left="12" />
+                                    </padding>
+
+                                    <columnConstraints>
+                                        <ColumnConstraints minWidth="150.0" />
+                                        <ColumnConstraints hgrow="ALWAYS" />
+                                    </columnConstraints>
+
+                                    <Label text="Vrednost" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                                    <TextField fx:id="inputValueTextField" promptText="Vnesi stevilo" GridPane.columnIndex="1" GridPane.rowIndex="0" styleClass="form-control,earth-input" />
+
+                                    <Label text="Kategorija" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                                    <ComboBox fx:id="categoryComboBox" onAction="#onCategoryChanged" GridPane.columnIndex="1" GridPane.rowIndex="1" styleClass="form-control,earth-input" />
+
+                                    <Label text="Izvorna enota" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+                                    <ComboBox fx:id="sourceUnitComboBox" GridPane.columnIndex="1" GridPane.rowIndex="2" styleClass="form-control,earth-input" />
+
+                                    <Label text="Ciljna enota" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+                                    <ComboBox fx:id="targetUnitComboBox" GridPane.columnIndex="1" GridPane.rowIndex="3" styleClass="form-control,earth-input" />
+
+                                    <HBox spacing="12.0" GridPane.columnIndex="0" GridPane.rowIndex="4" GridPane.columnSpan="2" alignment="CENTER_LEFT">
+                                        <GridPane hgap="6.0" vgap="6.0">
+                                            <columnConstraints>
+                                                <ColumnConstraints minWidth="70" />
+                                                <ColumnConstraints minWidth="70" />
+                                                <ColumnConstraints minWidth="70" />
+                                            </columnConstraints>
+                                            <rowConstraints>
+                                                <RowConstraints />
+                                                <RowConstraints />
+                                                <RowConstraints />
+                                                <RowConstraints />
+                                            </rowConstraints>
+
+                                            <Button text="7" userData="7" onAction="#onNumericKeypadButtonClick" GridPane.columnIndex="0" GridPane.rowIndex="0" styleClass="btn,btn-default,keypad-button" />
+                                            <Button text="8" userData="8" onAction="#onNumericKeypadButtonClick" GridPane.columnIndex="1" GridPane.rowIndex="0" styleClass="btn,btn-default,keypad-button" />
+                                            <Button text="9" userData="9" onAction="#onNumericKeypadButtonClick" GridPane.columnIndex="2" GridPane.rowIndex="0" styleClass="btn,btn-default,keypad-button" />
+
+                                            <Button text="4" userData="4" onAction="#onNumericKeypadButtonClick" GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="btn,btn-default,keypad-button" />
+                                            <Button text="5" userData="5" onAction="#onNumericKeypadButtonClick" GridPane.columnIndex="1" GridPane.rowIndex="1" styleClass="btn,btn-default,keypad-button" />
+                                            <Button text="6" userData="6" onAction="#onNumericKeypadButtonClick" GridPane.columnIndex="2" GridPane.rowIndex="1" styleClass="btn,btn-default,keypad-button" />
+
+                                            <Button text="1" userData="1" onAction="#onNumericKeypadButtonClick" GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="btn,btn-default,keypad-button" />
+                                            <Button text="2" userData="2" onAction="#onNumericKeypadButtonClick" GridPane.columnIndex="1" GridPane.rowIndex="2" styleClass="btn,btn-default,keypad-button" />
+                                            <Button text="3" userData="3" onAction="#onNumericKeypadButtonClick" GridPane.columnIndex="2" GridPane.rowIndex="2" styleClass="btn,btn-default,keypad-button" />
+
+                                            <Button text="0" userData="0" onAction="#onNumericKeypadButtonClick" GridPane.columnIndex="0" GridPane.rowIndex="3" styleClass="btn,btn-default,keypad-button" />
+                                            <Button text="." userData="." onAction="#onNumericKeypadButtonClick" GridPane.columnIndex="1" GridPane.rowIndex="3" styleClass="btn,btn-default,keypad-button" />
+                                            <Button text="C" onAction="#onClearInputClick" GridPane.columnIndex="2" GridPane.rowIndex="3" styleClass="btn,btn-default,keypad-button" />
+                                        </GridPane>
+
+                                        <VBox spacing="8.0">
+                                            <Button text="Pretvori" onAction="#onConvertClick" styleClass="btn,btn-success,convert-button" />
+                                        </VBox>
+                                    </HBox>
+                                </GridPane>
+                            </VBox>
+                        </content>
+                    </TitledPane>
+
+                    <TitledPane fx:id="pane2" text="Zgodovina pretvorb" expanded="false" maxWidth="Infinity" styleClass="custom-accordion-pane">
+                        <content>
+                            <VBox styleClass="pane-content-shell">
+                                <padding>
+                                    <Insets top="12" right="12" bottom="12" left="12" />
+                                </padding>
+                                <TextArea fx:id="conversionHistoryTextArea" prefHeight="220.0" wrapText="true" styleClass="pane-body-content" VBox.vgrow="ALWAYS" />
+                            </VBox>
+                        </content>
+                    </TitledPane>
+
+                    <TitledPane fx:id="pane3" text="Dnevnik dogodkov" expanded="false" maxWidth="Infinity" styleClass="custom-accordion-pane">
+                        <content>
+                            <VBox styleClass="pane-content-shell">
+                                <padding>
+                                    <Insets top="12" right="12" bottom="12" left="12" />
+                                </padding>
+                                <TextArea fx:id="eventLogTextArea" prefHeight="220.0" wrapText="true" editable="false" styleClass="pane-body-content" VBox.vgrow="ALWAYS" />
+                            </VBox>
+                        </content>
+                    </TitledPane>
+            </VBox>
+        </VBox>
+    </center>
+
+    <bottom>
+        <Label fx:id="statusLabel" styleClass="status-label" text="Pripravljeno." BorderPane.alignment="CENTER_LEFT">
+            <BorderPane.margin>
+                <Insets top="4" right="10" bottom="6" left="10" />
+            </BorderPane.margin>
+        </Label>
+    </bottom>
+
+</BorderPane>

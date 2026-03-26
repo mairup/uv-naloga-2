@@ -1,14 +1,22 @@
 # Gradle
 .gradle/
 build/
+bin/
 
 # Java
 out/
 *.class
+hs_err_pid*
+*.log
 
 # IntelliJ IDEA
 .idea/
 *.iml
+
+# Eclipse / VS Code Java language server metadata
+.classpath
+.project
+.settings/
 
 # OS files
 .DS_Store

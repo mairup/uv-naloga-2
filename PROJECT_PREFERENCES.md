@@ -1,0 +1,1 @@
+/home/mai/.config/Code/User/workspaceStorage/90260a0fae4addd85455396389909939/GitHub.copilot-chat/memory-tool/memories/repo/project_preferences.md
