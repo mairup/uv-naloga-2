@@ -1,5 +1,6 @@
 package uv.naloge.drugaNaloga;
 
+import java.awt.Desktop;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -14,6 +15,7 @@ import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.DecimalFormat;
@@ -43,6 +45,7 @@ public class PretvornikEnotController {
     private static final String OUNCE_UNIT = "oz";
 
     private static final String AUTHOR_INFORMATION = "Avtor: Mai Rupnik, 2. letnik, BVS-RI @ FRI, UNI-LJ";
+    private static final String PROJECT_URL = "https://github.com/mairup/uv-naloga-2";
 
     @FXML
     private TextField firstValueTextField;
@@ -397,6 +400,48 @@ public class PretvornikEnotController {
     @FXML
     private void onAuthorClick() {
         updateStatusAndLog(AUTHOR_INFORMATION);
+    }
+
+    @FXML
+    private void onAboutProgramClick() {
+        updateStatusAndLog("Odpiram projektno stran...");
+
+        Thread openLinkThread = new Thread(() -> {
+            boolean opened = tryOpenProjectUrlWithDesktop() || tryOpenProjectUrlWithXdgOpen();
+            Platform.runLater(() -> {
+                if (opened) {
+                    updateStatusAndLog("Odprt projekt: " + PROJECT_URL);
+                } else {
+                    updateStatusAndLog("Povezave ni bilo mogoce odpreti samodejno. URL: " + PROJECT_URL);
+                }
+            });
+        }, "about-program-link-opener");
+        openLinkThread.setDaemon(true);
+        openLinkThread.start();
+    }
+
+    private boolean tryOpenProjectUrlWithDesktop() {
+        if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+            return false;
+        }
+        try {
+            Desktop.getDesktop().browse(URI.create(PROJECT_URL));
+            return true;
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    private boolean tryOpenProjectUrlWithXdgOpen() {
+        try {
+            Process process = new ProcessBuilder("xdg-open", PROJECT_URL).start();
+            return process.isAlive() || process.waitFor() == 0;
+        } catch (IOException exception) {
+            return false;
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
     }
 
     @FXML
