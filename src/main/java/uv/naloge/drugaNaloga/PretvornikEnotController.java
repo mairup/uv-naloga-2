@@ -45,16 +45,19 @@ public class PretvornikEnotController {
     private static final String AUTHOR_INFORMATION = "Avtor: Mai Rupnik, 2. letnik, BVS-RI @ FRI, UNI-LJ";
 
     @FXML
-    private TextField inputValueTextField;
+    private TextField firstValueTextField;
+
+    @FXML
+    private TextField secondValueTextField;
 
     @FXML
     private ComboBox<String> categoryComboBox;
 
     @FXML
-    private ComboBox<String> sourceUnitComboBox;
+    private ComboBox<String> firstUnitComboBox;
 
     @FXML
-    private ComboBox<String> targetUnitComboBox;
+    private ComboBox<String> secondUnitComboBox;
 
     @FXML
     private TextArea conversionHistoryTextArea;
@@ -86,13 +89,18 @@ public class PretvornikEnotController {
     @FXML
     private Button exitToolbarButton;
 
+    @FXML
+    private Button directionToggleButton;
+
     private final Map<String, List<String>> unitsByCategory = new LinkedHashMap<>();
     private final DecimalFormat numberFormatter = new DecimalFormat("0.########", DecimalFormatSymbols.getInstance());
     private final DateTimeFormatter timestampFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private boolean isFirstToSecondConversion = true;
 
     public void initialize() {
         initializeCategoriesAndUnits();
         initializeToolbarIcons();
+        updateDirectionToggleState();
         statusLabel.setText("Pripravljeno.");
         appendEventLog("Aplikacija je pripravljena za delo.");
 
@@ -144,12 +152,12 @@ public class PretvornikEnotController {
         String selectedCategory = categoryComboBox.getValue();
         List<String> units = unitsByCategory.getOrDefault(selectedCategory, List.of());
 
-        sourceUnitComboBox.getItems().setAll(units);
-        targetUnitComboBox.getItems().setAll(units);
+        firstUnitComboBox.getItems().setAll(units);
+        secondUnitComboBox.getItems().setAll(units);
 
         if (!units.isEmpty()) {
-            sourceUnitComboBox.getSelectionModel().selectFirst();
-            targetUnitComboBox.getSelectionModel().select(Math.min(1, units.size() - 1));
+            firstUnitComboBox.getSelectionModel().selectFirst();
+            secondUnitComboBox.getSelectionModel().select(Math.min(1, units.size() - 1));
         }
     }
 
@@ -161,30 +169,43 @@ public class PretvornikEnotController {
         }
 
         String inputAppendix = userDataValue.toString();
-        String currentInputValue = inputValueTextField.getText();
+        TextField sourceValueField = getCurrentSourceValueField();
+        String currentInputValue = sourceValueField.getText();
         if (".".equals(inputAppendix) && currentInputValue.contains(".")) {
             return;
         }
-        inputValueTextField.setText(currentInputValue + inputAppendix);
+        sourceValueField.setText(currentInputValue + inputAppendix);
     }
 
     @FXML
     private void onClearInputClick() {
-        inputValueTextField.clear();
+        getCurrentSourceValueField().clear();
         updateStatusAndLog("Vnos v pretvorniku je bil pobrisan.");
     }
 
     @FXML
+    private void onToggleDirectionClick() {
+        isFirstToSecondConversion = !isFirstToSecondConversion;
+        updateDirectionToggleState();
+        updateStatusAndLog("Smer pretvorbe je nastavljena na " + getDirectionDescription() + ".");
+    }
+
+    @FXML
     private void onConvertClick() {
-        String inputText = inputValueTextField.getText().trim().replace(',', '.');
+        TextField sourceValueField = getCurrentSourceValueField();
+        TextField targetValueField = getCurrentTargetValueField();
+        ComboBox<String> sourceUnitField = getCurrentSourceUnitField();
+        ComboBox<String> targetUnitField = getCurrentTargetUnitField();
+
+        String inputText = sourceValueField.getText().trim().replace(',', '.');
         if (inputText.isEmpty()) {
             updateStatusAndLog("Napaka: vnos je prazen.");
             return;
         }
 
         String selectedCategory = categoryComboBox.getValue();
-        String selectedSourceUnit = sourceUnitComboBox.getValue();
-        String selectedTargetUnit = targetUnitComboBox.getValue();
+        String selectedSourceUnit = sourceUnitField.getValue();
+        String selectedTargetUnit = targetUnitField.getValue();
 
         if (selectedCategory == null || selectedSourceUnit == null || selectedTargetUnit == null) {
             updateStatusAndLog("Napaka: kategorija ali enota ni izbrana.");
@@ -205,9 +226,36 @@ public class PretvornikEnotController {
         String conversionOutput = formatNumber(convertedValue) + " " + selectedTargetUnit;
         String conversionEntry = conversionInput + " -> " + conversionOutput;
 
-        inputValueTextField.setText(formatNumber(convertedValue));
+        targetValueField.setText(formatNumber(convertedValue));
         appendConversionToHistory(conversionEntry);
         updateStatusAndLog("Izvedena pretvorba: " + conversionEntry + ".");
+    }
+
+    private TextField getCurrentSourceValueField() {
+        return isFirstToSecondConversion ? firstValueTextField : secondValueTextField;
+    }
+
+    private TextField getCurrentTargetValueField() {
+        return isFirstToSecondConversion ? secondValueTextField : firstValueTextField;
+    }
+
+    private ComboBox<String> getCurrentSourceUnitField() {
+        return isFirstToSecondConversion ? firstUnitComboBox : secondUnitComboBox;
+    }
+
+    private ComboBox<String> getCurrentTargetUnitField() {
+        return isFirstToSecondConversion ? secondUnitComboBox : firstUnitComboBox;
+    }
+
+    private String getDirectionDescription() {
+        return isFirstToSecondConversion ? "prve navzdol proti drugi" : "druge navzgor proti prvi";
+    }
+
+    private void updateDirectionToggleState() {
+        if (directionToggleButton == null) {
+            return;
+        }
+        directionToggleButton.setText(isFirstToSecondConversion ? "↓" : "↑");
     }
 
     private double convertValue(String category, String sourceUnit, String targetUnit, double value) {
@@ -340,7 +388,8 @@ public class PretvornikEnotController {
 
     @FXML
     private void onClearAllClick() {
-        inputValueTextField.clear();
+        firstValueTextField.clear();
+        secondValueTextField.clear();
         conversionHistoryTextArea.clear();
         updateStatusAndLog("Vnos in zgodovina pretvorb sta pobrisana.");
     }

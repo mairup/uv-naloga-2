@@ -14,7 +14,7 @@ public class PretvornikEnotApplication extends Application {
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(
                 PretvornikEnotApplication.class.getResource("pretvornik-enot-view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 1100, 760);
+        Scene scene = new Scene(fxmlLoader.load(), 420, 780);
         scene.getStylesheets().add(BootstrapFX.bootstrapFXStylesheet());
         scene.getStylesheets().add(
                 Objects.requireNonNull(PretvornikEnotApplication.class.getResource("styles.css")).toExternalForm());
