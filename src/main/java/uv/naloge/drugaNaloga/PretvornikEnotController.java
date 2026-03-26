@@ -57,6 +57,7 @@ public class PretvornikEnotController {
     private static final String AUTHOR_INFORMATION = "Avtor: Mai Rupnik, 2. letnik, BVS-RI @ FRI, UNI-LJ";
     private static final String PROJECT_URL = "https://github.com/mairup/uv-naloga-2";
     private static final String HISTORY_FILE_DELIMITER = "\t";
+    private static final String STATUS_ERROR_STYLE_CLASS = "status-label-error";
 
     @FXML
     private TextField firstValueTextField;
@@ -114,6 +115,7 @@ public class PretvornikEnotController {
     private final DateTimeFormatter timestampFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
     private final ObservableList<HistoryEntry> historyEntries = FXCollections.observableArrayList();
     private boolean isFirstToSecondConversion = true;
+    private boolean isStatusResetQueued;
 
     public void initialize() {
         initializeCategoriesAndUnits();
@@ -218,7 +220,7 @@ public class PretvornikEnotController {
 
         String inputText = sourceValueField.getText().trim().replace(',', '.');
         if (inputText.isEmpty()) {
-            updateStatusAndLog("Napaka: vnos je prazen.");
+            updateStatusAndLogError("Napaka: vnos je prazen.");
             return;
         }
 
@@ -227,7 +229,7 @@ public class PretvornikEnotController {
         String selectedTargetUnit = targetUnitField.getValue();
 
         if (selectedCategory == null || selectedSourceUnit == null || selectedTargetUnit == null) {
-            updateStatusAndLog("Napaka: kategorija ali enota ni izbrana.");
+            updateStatusAndLogError("Napaka: kategorija ali enota ni izbrana.");
             return;
         }
 
@@ -235,7 +237,7 @@ public class PretvornikEnotController {
         try {
             inputNumericValue = Double.parseDouble(inputText);
         } catch (NumberFormatException exception) {
-            updateStatusAndLog("Napaka pri vnosu: " + inputText + ".");
+            updateStatusAndLogError("Napaka pri vnosu: " + inputText + ".");
             return;
         }
 
@@ -552,7 +554,7 @@ public class PretvornikEnotController {
 
     private void appendConversionToHistory(HistoryEntry historyEntry) {
         historyEntries.add(historyEntry);
-        addHistoryTile(historyEntry);
+        renderHistoryTiles();
         appendEventLog("Dodan zapis v zgodovino: " + historyEntry.getFirstDisplay() + " -> "
                 + historyEntry.getSecondDisplay() + ".");
     }
@@ -630,8 +632,29 @@ public class PretvornikEnotController {
     }
 
     private void updateStatusAndLog(String statusMessage) {
+        if (isStatusResetQueued) {
+            applyNormalStatusStyle();
+            isStatusResetQueued = false;
+        }
         statusLabel.setText(statusMessage);
         appendEventLog(statusMessage);
+    }
+
+    private void updateStatusAndLogError(String statusMessage) {
+        applyErrorStatusStyle();
+        isStatusResetQueued = true;
+        statusLabel.setText(statusMessage);
+        appendEventLog(statusMessage);
+    }
+
+    private void applyErrorStatusStyle() {
+        if (!statusLabel.getStyleClass().contains(STATUS_ERROR_STYLE_CLASS)) {
+            statusLabel.getStyleClass().add(STATUS_ERROR_STYLE_CLASS);
+        }
+    }
+
+    private void applyNormalStatusStyle() {
+        statusLabel.getStyleClass().remove(STATUS_ERROR_STYLE_CLASS);
     }
 
     private void appendEventLog(String logMessage) {
@@ -650,8 +673,8 @@ public class PretvornikEnotController {
         }
 
         historyTilesContainer.getChildren().clear();
-        for (HistoryEntry entry : historyEntries) {
-            addHistoryTile(entry);
+        for (int index = historyEntries.size() - 1; index >= 0; index--) {
+            addHistoryTile(historyEntries.get(index));
         }
     }
 
