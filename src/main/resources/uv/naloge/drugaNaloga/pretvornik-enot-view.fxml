@@ -7,6 +7,7 @@
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.TitledPane?>
@@ -56,8 +57,10 @@
     </top>
 
     <center>
-        <VBox style="-fx-padding: 12;" spacing="10.0">
-            <VBox VBox.vgrow="ALWAYS" maxWidth="Infinity" styleClass="custom-accordion" spacing="10.0">
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="NEVER" styleClass="content-scroll">
+            <content>
+                <VBox style="-fx-padding: 12;" spacing="10.0">
+                    <VBox VBox.vgrow="ALWAYS" maxWidth="Infinity" styleClass="custom-accordion" spacing="10.0">
                     <TitledPane fx:id="pane1" text="Pretvornik enot" expanded="true" maxWidth="Infinity" styleClass="custom-accordion-pane">
                         <content>
                             <VBox styleClass="pane-content-shell">
@@ -144,16 +147,18 @@
                             </VBox>
                         </content>
                     </TitledPane>
-            </VBox>
-        </VBox>
+                    </VBox>
+                </VBox>
+            </content>
+        </ScrollPane>
     </center>
 
     <bottom>
-        <Label fx:id="statusLabel" styleClass="status-label" text="Pripravljeno." BorderPane.alignment="CENTER_LEFT">
-            <BorderPane.margin>
-                <Insets left="10" bottom="5" />
-            </BorderPane.margin>
-        </Label>
+        <HBox styleClass="status-bar" alignment="CENTER_LEFT" BorderPane.alignment="CENTER_LEFT">
+            <children>
+                <Label fx:id="statusLabel" styleClass="status-label" text="Pripravljeno." />
+            </children>
+        </HBox>
     </bottom>
 
 </BorderPane>

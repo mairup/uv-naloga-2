@@ -80,6 +80,24 @@
   -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.08), 8, 0, 0, 2);
 }
 
+.content-scroll {
+  -fx-background-color: transparent;
+  -fx-background-insets: 0;
+  -fx-padding: 0;
+}
+
+.content-scroll > .viewport {
+  -fx-background-color: transparent;
+}
+
+.content-scroll .scroll-bar:vertical,
+.content-scroll .scroll-bar:horizontal {
+  -fx-pref-width: 0;
+  -fx-pref-height: 0;
+  -fx-opacity: 0;
+  -fx-padding: 0;
+}
+
 .custom-accordion {
   -fx-background-color: transparent;
 }
@@ -333,12 +351,20 @@
   -fx-font-weight: bold;
 }
 
+.status-bar {
+  -fx-background-color: #8ca785;
+  -fx-border-color: #6f8769;
+  -fx-border-width: 1 0 0 0;
+  -fx-padding: 4 10 5 10;
+  -fx-min-height: 24;
+}
+
 .status-label {
   -fx-background-color: transparent;
   -fx-border-color: transparent;
   -fx-border-width: 0;
-  -fx-text-fill: #1a301a;
+  -fx-text-fill: #1f331f;
   -fx-font-size: 12px;
   -fx-font-weight: normal;
-  -fx-padding: 4 8 4 0;
+  -fx-padding: 0;
 }
