@@ -29,12 +29,12 @@
         <VBox spacing="0.0">
             <MenuBar styleClass="earth-menu-bar">
                 <Menu text="_Datoteka">
-                    <MenuItem text="_Odpri" onAction="#onOpenClick" />
-                    <MenuItem text="_Shrani" onAction="#onSaveClick" />
-                    <MenuItem text="I_zhod" onAction="#onExitClick" />
+                    <MenuItem text="_Odpri" onAction="#onOpenClick" accelerator="Shortcut+O" />
+                    <MenuItem text="_Shrani" onAction="#onSaveClick" accelerator="Shortcut+S" />
+                    <MenuItem text="I_zhod" onAction="#onExitClick" accelerator="Shortcut+Q" />
                 </Menu>
                 <Menu text="_Uredi">
-                    <MenuItem text="_Pobrisi" onAction="#onClearAllClick" />
+                    <MenuItem text="_Pobrisi" onAction="#onClearAllClick" accelerator="Shortcut+R" />
                 </Menu>
                 <Menu text="_Pomoc">
                     <MenuItem text="_Avtor" onAction="#onAuthorClick" />
@@ -57,12 +57,10 @@
     </top>
 
     <center>
-        <ScrollPane fx:id="centerContentScrollPane" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="NEVER" styleClass="content-scroll">
-            <content>
-                <VBox style="-fx-padding: 12;" spacing="10.0">
-                    <VBox VBox.vgrow="ALWAYS" maxWidth="Infinity" styleClass="custom-accordion" spacing="10.0">
-                    <TitledPane fx:id="pane1" text="Pretvornik enot" expanded="true" maxWidth="Infinity" styleClass="custom-accordion-pane">
-                        <content>
+        <VBox style="-fx-padding: 12;" spacing="10.0">
+            <VBox fx:id="accordionContainer" VBox.vgrow="ALWAYS" maxWidth="Infinity" styleClass="custom-accordion" spacing="10.0">
+                <TitledPane fx:id="pane1" text="Pretvornik enot" expanded="true" maxWidth="Infinity" styleClass="custom-accordion-pane">
+                    <content>
                             <VBox styleClass="pane-content-shell">
                                 <VBox spacing="14.0" styleClass="pane-body-content">
                                     <padding>
@@ -128,31 +126,31 @@
 
                     <TitledPane fx:id="pane2" text="Zgodovina pretvorb" expanded="false" maxWidth="Infinity" styleClass="custom-accordion-pane">
                         <content>
-                            <VBox styleClass="pane-content-shell">
+                            <VBox styleClass="pane-content-shell" VBox.vgrow="ALWAYS">
                                 <padding>
                                     <Insets top="12" right="12" bottom="12" left="12" />
                                 </padding>
-                                <VBox styleClass="converter-section,history-tiles-shell" VBox.vgrow="ALWAYS">
-                                    <VBox fx:id="historyTilesContainer" spacing="8.0" styleClass="history-tiles-container" VBox.vgrow="ALWAYS" />
-                                </VBox>
+                                <ScrollPane fx:id="historyScrollPane" fitToWidth="true" fitToHeight="true" VBox.vgrow="ALWAYS" styleClass="pane-scroll">
+                                    <content>
+                                        <VBox fx:id="historyTilesContainer" spacing="8.0" styleClass="converter-section,history-tiles-shell,history-tiles-container" />
+                                    </content>
+                                </ScrollPane>
                             </VBox>
                         </content>
                     </TitledPane>
 
                     <TitledPane fx:id="pane3" text="Dnevnik dogodkov" expanded="false" maxWidth="Infinity" styleClass="custom-accordion-pane">
                         <content>
-                            <VBox styleClass="pane-content-shell">
+                            <VBox styleClass="pane-content-shell" VBox.vgrow="ALWAYS">
                                 <padding>
                                     <Insets top="12" right="12" bottom="12" left="12" />
                                 </padding>
-                                <TextArea fx:id="eventLogTextArea" prefHeight="220.0" wrapText="true" editable="false" styleClass="pane-body-content" VBox.vgrow="ALWAYS" />
+                                <TextArea fx:id="eventLogTextArea" wrapText="false" editable="false" VBox.vgrow="ALWAYS" maxHeight="Infinity" styleClass="pane-body-content,event-log-text-area" />
                             </VBox>
                         </content>
                     </TitledPane>
                     </VBox>
                 </VBox>
-            </content>
-        </ScrollPane>
     </center>
 
     <bottom>

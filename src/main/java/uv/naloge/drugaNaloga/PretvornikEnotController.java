@@ -1,13 +1,12 @@
 package uv.naloge.drugaNaloga;
 
 import java.awt.Desktop;
-import javafx.animation.PauseTransition;
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -34,7 +33,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import javafx.util.Duration;
 
 public class PretvornikEnotController {
 
@@ -58,6 +56,8 @@ public class PretvornikEnotController {
     private static final String PROJECT_URL = "https://github.com/mairup/uv-naloga-2";
     private static final String HISTORY_FILE_DELIMITER = "\t";
     private static final String STATUS_ERROR_STYLE_CLASS = "status-label-error";
+    private static final double MIN_EXPANDED_PANE_CONTENT_HEIGHT = 80;
+    private static final double ACCORDION_VERTICAL_SPACING = 10;
 
     @FXML
     private TextField firstValueTextField;
@@ -78,6 +78,9 @@ public class PretvornikEnotController {
     private VBox historyTilesContainer;
 
     @FXML
+    private ScrollPane historyScrollPane;
+
+    @FXML
     private TextArea eventLogTextArea;
 
     @FXML
@@ -93,6 +96,9 @@ public class PretvornikEnotController {
     private TitledPane pane3;
 
     @FXML
+    private VBox accordionContainer;
+
+    @FXML
     private Button openToolbarButton;
 
     @FXML
@@ -106,9 +112,6 @@ public class PretvornikEnotController {
 
     @FXML
     private Button directionToggleButton;
-
-    @FXML
-    private ScrollPane centerContentScrollPane;
 
     private final Map<String, List<String>> unitsByCategory = new LinkedHashMap<>();
     private final DecimalFormat numberFormatter = new DecimalFormat("0.####", DecimalFormatSymbols.getInstance());
@@ -126,6 +129,8 @@ public class PretvornikEnotController {
         appendEventLog("Aplikacija je pripravljena za delo.");
 
         setupAccordionLogic();
+        setupDynamicPaneHeightManagement();
+        requestAccordionPaneHeightRefresh();
     }
 
     private void setupAccordionLogic() {
@@ -140,8 +145,40 @@ public class PretvornikEnotController {
                             }
                         }
                     }
+                    requestAccordionPaneHeightRefresh();
                 });
             }
+        }
+    }
+
+    private void setupDynamicPaneHeightManagement() {
+        if (eventLogTextArea != null) {
+            eventLogTextArea.setPrefHeight(Region.USE_COMPUTED_SIZE);
+            eventLogTextArea.setMinHeight(Region.USE_COMPUTED_SIZE);
+            eventLogTextArea.setMaxHeight(Double.MAX_VALUE);
+        }
+
+        if (historyScrollPane != null) {
+            historyScrollPane.setPrefHeight(Region.USE_COMPUTED_SIZE);
+            historyScrollPane.setMinHeight(MIN_EXPANDED_PANE_CONTENT_HEIGHT);
+            historyScrollPane.setMaxHeight(Double.MAX_VALUE);
+        }
+
+        if (accordionContainer != null) {
+            accordionContainer.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene != null) {
+                    newScene.heightProperty()
+                            .addListener((sceneObs, oldHeight, newHeight) -> requestAccordionPaneHeightRefresh());
+                    newScene.windowProperty().addListener((windowObs, oldWindow, newWindow) -> {
+                        if (newWindow != null) {
+                            newWindow.heightProperty().addListener(
+                                    (heightObs, oldHeight, newHeight) -> requestAccordionPaneHeightRefresh());
+                        }
+                    });
+                }
+            });
+            accordionContainer.heightProperty()
+                    .addListener((obs, oldHeight, newHeight) -> requestAccordionPaneHeightRefresh());
         }
     }
 
@@ -254,8 +291,24 @@ public class PretvornikEnotController {
         String conversionEntry = historyEntry.getFirstDisplay() + " -> " + historyEntry.getSecondDisplay();
 
         targetValueField.setText(targetValueText);
+        if (isSameAsLastHistoryEntry(historyEntry)) {
+            updateStatusAndLog("Pretvorba je enaka zadnji, zato ni bila dodana v zgodovino: " + conversionEntry + ".");
+            return;
+        }
         appendConversionToHistory(historyEntry);
         updateStatusAndLog("Izvedena pretvorba: " + conversionEntry + ".");
+    }
+
+    private boolean isSameAsLastHistoryEntry(HistoryEntry currentEntry) {
+        if (historyEntries.isEmpty()) {
+            return false;
+        }
+
+        HistoryEntry lastEntry = historyEntries.get(historyEntries.size() - 1);
+        return currentEntry.getFirstValueText().equals(lastEntry.getFirstValueText())
+                && currentEntry.getFirstUnit().equals(lastEntry.getFirstUnit())
+                && currentEntry.getSecondValueText().equals(lastEntry.getSecondValueText())
+                && currentEntry.getSecondUnit().equals(lastEntry.getSecondUnit());
     }
 
     private void restoreHistoryEntry(HistoryEntry entry) {
@@ -270,6 +323,12 @@ public class PretvornikEnotController {
             appendEventLog("Smer pretvorbe je bila ob obnovitvi nastavljena navzdol.");
         }
 
+        String targetCategory = getCategoryForUnit(entry.getFirstUnit());
+        if (targetCategory != null && !targetCategory.equals(categoryComboBox.getValue())) {
+            categoryComboBox.getSelectionModel().select(targetCategory);
+            updateUnitsForSelectedCategory();
+        }
+
         firstValueTextField.setText(entry.getFirstValueText());
         secondValueTextField.setText(entry.getSecondValueText());
         selectUnitIfAvailable(firstUnitComboBox, entry.getFirstUnit());
@@ -281,40 +340,94 @@ public class PretvornikEnotController {
     }
 
     private void scrollConverterIntoView() {
-        if (centerContentScrollPane == null) {
-            return;
-        }
-
-        Runnable scrollAction = () -> Platform.runLater(() -> centerContentScrollPane.setVvalue(0.0));
-
         if (pane1 != null && !pane1.isExpanded()) {
-            ChangeListener<Boolean> expansionListener = new ChangeListener<>() {
-                @Override
-                public void changed(javafx.beans.value.ObservableValue<? extends Boolean> observable,
-                        Boolean oldValue, Boolean newValue) {
-                    if (Boolean.TRUE.equals(newValue)) {
-                        pane1.expandedProperty().removeListener(this);
-                        runDelayedScroll(scrollAction);
-                    }
-                }
-            };
-            pane1.expandedProperty().addListener(expansionListener);
-            return;
+            pane1.setExpanded(true);
         }
-
-        runDelayedScroll(scrollAction);
     }
 
-    private void runDelayedScroll(Runnable scrollAction) {
-        PauseTransition pauseTransition = new PauseTransition(Duration.millis(350));
-        pauseTransition.setOnFinished(event -> scrollAction.run());
-        pauseTransition.play();
+    private void requestAccordionPaneHeightRefresh() {
+        Platform.runLater(this::refreshAccordionPaneHeights);
+    }
+
+    private void refreshAccordionPaneHeights() {
+        double maxExpandedContentHeight = computeExpandedPaneContentMaxHeight();
+
+        if (pane2 != null && pane2.isExpanded()) {
+            Region historyContentRegion = getHistoryContentRegion();
+            if (historyContentRegion != null) {
+                double preferredHeight = maxExpandedContentHeight;
+                applyDynamicContentHeight(historyContentRegion, preferredHeight, maxExpandedContentHeight);
+            }
+        }
+
+        if (pane3 != null && pane3.isExpanded() && eventLogTextArea != null) {
+            double preferredHeight = maxExpandedContentHeight;
+            applyDynamicContentHeight(eventLogTextArea, preferredHeight, maxExpandedContentHeight);
+        }
+    }
+
+    private Region getHistoryContentRegion() {
+        return historyScrollPane;
+    }
+
+    private double computeExpandedPaneContentMaxHeight() {
+        if (accordionContainer == null) {
+            return Double.MAX_VALUE;
+        }
+
+        double totalHeight = accordionContainer.getHeight();
+        if (totalHeight <= 0) {
+            return Double.MAX_VALUE;
+        }
+
+        double headerHeights = resolvePaneTitleHeight(pane1) + resolvePaneTitleHeight(pane2)
+                + resolvePaneTitleHeight(pane3);
+        double spacingHeights = ACCORDION_VERTICAL_SPACING * 2;
+        double availableHeight = totalHeight - headerHeights - spacingHeights;
+        return Math.max(MIN_EXPANDED_PANE_CONTENT_HEIGHT, availableHeight);
+    }
+
+    private double resolvePaneTitleHeight(TitledPane pane) {
+        if (pane == null) {
+            return 0;
+        }
+        Node titleNode = pane.lookup(".title");
+        if (titleNode != null) {
+            return titleNode.getBoundsInLocal().getHeight();
+        }
+        return 40;
+    }
+
+    private void applyDynamicContentHeight(Region contentRegion, double preferredHeight, double maxHeight) {
+        if (contentRegion == null) {
+            return;
+        }
+
+        double safeMaxHeight = maxHeight > 0 ? maxHeight : MIN_EXPANDED_PANE_CONTENT_HEIGHT;
+        double safePreferredHeight = Math.max(MIN_EXPANDED_PANE_CONTENT_HEIGHT, preferredHeight);
+        double clampedHeight = Math.min(safePreferredHeight, safeMaxHeight);
+
+        contentRegion.setMinHeight(Region.USE_COMPUTED_SIZE);
+        contentRegion.setPrefHeight(clampedHeight);
+        contentRegion.setMaxHeight(safeMaxHeight);
     }
 
     private void selectUnitIfAvailable(ComboBox<String> comboBox, String unit) {
         if (comboBox.getItems().contains(unit)) {
             comboBox.getSelectionModel().select(unit);
         }
+    }
+
+    private String getCategoryForUnit(String unit) {
+        if (unit == null || unit.isBlank()) {
+            return null;
+        }
+        for (Map.Entry<String, List<String>> mapEntry : unitsByCategory.entrySet()) {
+            if (mapEntry.getValue().contains(unit)) {
+                return mapEntry.getKey();
+            }
+        }
+        return null;
     }
 
     private TextField getCurrentSourceValueField() {
@@ -662,9 +775,11 @@ public class PretvornikEnotController {
         String logEntry = "[" + timestamp + "] " + logMessage;
         if (eventLogTextArea.getText().isBlank()) {
             eventLogTextArea.setText(logEntry);
+            requestAccordionPaneHeightRefresh();
             return;
         }
         eventLogTextArea.appendText(System.lineSeparator() + logEntry);
+        requestAccordionPaneHeightRefresh();
     }
 
     private void renderHistoryTiles() {
@@ -676,6 +791,7 @@ public class PretvornikEnotController {
         for (int index = historyEntries.size() - 1; index >= 0; index--) {
             addHistoryTile(historyEntries.get(index));
         }
+        requestAccordionPaneHeightRefresh();
     }
 
     private void addHistoryTile(HistoryEntry entry) {
