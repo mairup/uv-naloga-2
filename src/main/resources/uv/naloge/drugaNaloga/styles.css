@@ -193,53 +193,50 @@
 }
 
 .pane-scroll .scroll-bar:vertical,
-.pane-scroll .scroll-bar:horizontal,
-.event-log-text-area .scroll-bar:vertical,
-.event-log-text-area .scroll-bar:horizontal {
+.pane-scroll .scroll-bar:horizontal {
   -fx-background-color: transparent;
   -fx-padding: 2;
 }
 
-.pane-scroll .scroll-bar:vertical,
-.event-log-text-area .scroll-bar:vertical {
+.pane-scroll .scroll-bar:vertical {
   -fx-pref-width: 12;
 }
 
-.pane-scroll .scroll-bar:horizontal,
-.event-log-text-area .scroll-bar:horizontal {
+.pane-scroll .scroll-bar:horizontal {
   -fx-pref-height: 12;
 }
 
-.pane-scroll .scroll-bar .track,
-.event-log-text-area .scroll-bar .track {
+.pane-scroll .scroll-bar .track {
   -fx-background-color: #e8dfd8;
   -fx-background-radius: 8;
 }
 
-.pane-scroll .scroll-bar .thumb,
-.event-log-text-area .scroll-bar .thumb {
+.pane-scroll .scroll-bar .thumb {
   -fx-background-color: #c89c8a;
   -fx-background-radius: 8;
 }
 
-.pane-scroll .scroll-bar .thumb:hover,
-.event-log-text-area .scroll-bar .thumb:hover {
+.pane-scroll .scroll-bar .thumb:hover {
   -fx-background-color: #b98571;
 }
 
 .pane-scroll .scroll-bar .increment-button,
-.pane-scroll .scroll-bar .decrement-button,
-.event-log-text-area .scroll-bar .increment-button,
-.event-log-text-area .scroll-bar .decrement-button {
+.pane-scroll .scroll-bar .decrement-button {
   -fx-background-color: transparent;
   -fx-padding: 0;
 }
 
 .pane-scroll .scroll-bar .increment-arrow,
-.pane-scroll .scroll-bar .decrement-arrow,
-.event-log-text-area .scroll-bar .increment-arrow,
-.event-log-text-area .scroll-bar .decrement-arrow {
+.pane-scroll .scroll-bar .decrement-arrow {
   -fx-background-color: transparent;
+}
+
+.event-log-text-area .scroll-bar:vertical,
+.event-log-text-area .scroll-bar:horizontal {
+  -fx-pref-width: 0;
+  -fx-pref-height: 0;
+  -fx-opacity: 0;
+  -fx-padding: 0;
 }
 
 .pane-body-content {

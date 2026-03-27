@@ -34,9 +34,14 @@
                     <MenuItem text="I_zhod" onAction="#onExitClick" accelerator="Shortcut+Q" />
                 </Menu>
                 <Menu text="_Uredi">
-                    <MenuItem text="_Pobrisi" onAction="#onClearAllClick" accelerator="Shortcut+R" />
+                    <MenuItem text="_Pobriši" onAction="#onClearAllClick" accelerator="Shortcut+R" />
                 </Menu>
-                <Menu text="_Pomoc">
+                <Menu text="_Dnevnik">
+                    <MenuItem text="_Odpri dnevnik" onAction="#onOpenLogClick" accelerator="Shortcut+Shift+O" />
+                    <MenuItem text="_Shrani dnevnik" onAction="#onSaveLogClick" accelerator="Shortcut+Shift+S" />
+                    <MenuItem text="_Počisti dnevnik" onAction="#onClearLogClick" accelerator="Shortcut+Shift+R" />
+                </Menu>
+                <Menu text="_Pomoč">
                     <MenuItem text="_Avtor" onAction="#onAuthorClick" />
                     <MenuItem text="_O programu" onAction="#onAboutProgramClick" />
                 </Menu>
@@ -48,7 +53,7 @@
                     <Label text="•" styleClass="toolbar-dot-separator" />
                     <Button fx:id="saveToolbarButton" text="Shrani" onAction="#onSaveClick" styleClass="btn,btn-default,toolbar-action-button" />
                     <Region HBox.hgrow="ALWAYS" />
-                    <Button fx:id="clearToolbarButton" text="Pobrisi" onAction="#onClearAllClick" styleClass="btn,btn-default,toolbar-action-button" />
+                    <Button fx:id="clearToolbarButton" text="Pobriši" onAction="#onClearAllClick" styleClass="btn,btn-default,toolbar-action-button" />
                     <Label text="•" styleClass="toolbar-dot-separator" />
                     <Button fx:id="exitToolbarButton" text="Izhod" onAction="#onExitClick" styleClass="btn,btn-default,toolbar-action-button" />
                 </ToolBar>

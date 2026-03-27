@@ -36,7 +36,7 @@ import java.util.Map;
 
 public class PretvornikEnotController {
 
-    private static final String LENGTH_CATEGORY = "Dolzina";
+    private static final String LENGTH_CATEGORY = "Dolžina";
     private static final String TEMPERATURE_CATEGORY = "Temperatura";
     private static final String MASS_CATEGORY = "Masa";
 
@@ -55,9 +55,17 @@ public class PretvornikEnotController {
     private static final String AUTHOR_INFORMATION = "Avtor: Mai Rupnik, 2. letnik, BVS-RI @ FRI, UNI-LJ";
     private static final String PROJECT_URL = "https://github.com/mairup/uv-naloga-2";
     private static final String HISTORY_FILE_DELIMITER = "\t";
+    private static final String LOG_FILE_EXTENSION = ".log";
     private static final String STATUS_ERROR_STYLE_CLASS = "status-label-error";
     private static final double MIN_EXPANDED_PANE_CONTENT_HEIGHT = 80;
     private static final double ACCORDION_VERTICAL_SPACING = 10;
+    private static final int MIN_VISIBLE_LOG_LINES = 2;
+    private static final double LOG_LINE_HEIGHT_ESTIMATE = 18;
+    private static final double LOG_CONTENT_VERTICAL_PADDING = 18;
+    private static final double LOG_CHARACTER_WIDTH_ESTIMATE = 7.2;
+    private static final double LOG_HORIZONTAL_PADDING_ESTIMATE = 24;
+    private static final int MIN_VISIBLE_LOG_CHARACTERS = 32;
+    private static final String TRUNCATION_SUFFIX = "...";
 
     @FXML
     private TextField firstValueTextField;
@@ -117,6 +125,8 @@ public class PretvornikEnotController {
     private final DecimalFormat numberFormatter = new DecimalFormat("0.####", DecimalFormatSymbols.getInstance());
     private final DateTimeFormatter timestampFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
     private final ObservableList<HistoryEntry> historyEntries = FXCollections.observableArrayList();
+    private final ObservableList<String> eventLogEntries = FXCollections.observableArrayList();
+    private final StringBuilder completeEventLogContent = new StringBuilder();
     private boolean isFirstToSecondConversion = true;
     private boolean isStatusResetQueued;
 
@@ -156,6 +166,8 @@ public class PretvornikEnotController {
             eventLogTextArea.setPrefHeight(Region.USE_COMPUTED_SIZE);
             eventLogTextArea.setMinHeight(Region.USE_COMPUTED_SIZE);
             eventLogTextArea.setMaxHeight(Double.MAX_VALUE);
+            eventLogTextArea.heightProperty().addListener((obs, oldHeight, newHeight) -> refreshVisibleEventLog());
+            eventLogTextArea.widthProperty().addListener((obs, oldWidth, newWidth) -> refreshVisibleEventLog());
         }
 
         if (historyScrollPane != null) {
@@ -363,6 +375,7 @@ public class PretvornikEnotController {
         if (pane3 != null && pane3.isExpanded() && eventLogTextArea != null) {
             double preferredHeight = maxExpandedContentHeight;
             applyDynamicContentHeight(eventLogTextArea, preferredHeight, maxExpandedContentHeight);
+            refreshVisibleEventLog();
         }
     }
 
@@ -410,6 +423,102 @@ public class PretvornikEnotController {
         contentRegion.setMinHeight(Region.USE_COMPUTED_SIZE);
         contentRegion.setPrefHeight(clampedHeight);
         contentRegion.setMaxHeight(safeMaxHeight);
+    }
+
+    private int calculateVisibleLogLineCount() {
+        if (eventLogTextArea == null) {
+            return MIN_VISIBLE_LOG_LINES;
+        }
+
+        double availableHeight = eventLogTextArea.getHeight();
+        if (availableHeight <= 0) {
+            availableHeight = eventLogTextArea.prefHeight(-1);
+        }
+
+        double usableHeight = Math.max(0, availableHeight - LOG_CONTENT_VERTICAL_PADDING);
+        int estimatedLineCount = (int) Math.floor(usableHeight / LOG_LINE_HEIGHT_ESTIMATE);
+        return Math.max(MIN_VISIBLE_LOG_LINES, estimatedLineCount);
+    }
+
+    private int calculateVisibleLogCharacterLimit() {
+        if (eventLogTextArea == null) {
+            return 120;
+        }
+
+        double availableWidth = eventLogTextArea.getWidth();
+        if (availableWidth <= 0) {
+            availableWidth = eventLogTextArea.prefWidth(-1);
+        }
+
+        double usableWidth = Math.max(80, availableWidth - LOG_HORIZONTAL_PADDING_ESTIMATE);
+        int estimatedCharacterCount = (int) Math.floor(usableWidth / LOG_CHARACTER_WIDTH_ESTIMATE);
+        return Math.max(MIN_VISIBLE_LOG_CHARACTERS, estimatedCharacterCount);
+    }
+
+    private String truncateLogLineForDisplay(String line, int maxCharacters) {
+        if (line == null) {
+            return "";
+        }
+        if (line.length() <= maxCharacters) {
+            return line;
+        }
+
+        int safeTextLength = Math.max(1, maxCharacters - TRUNCATION_SUFFIX.length());
+        return line.substring(0, safeTextLength) + TRUNCATION_SUFFIX;
+    }
+
+    private void refreshVisibleEventLog() {
+        if (eventLogTextArea == null) {
+            return;
+        }
+
+        if (eventLogEntries.isEmpty()) {
+            eventLogTextArea.clear();
+            return;
+        }
+
+        int visibleLineCount = calculateVisibleLogLineCount();
+        int visibleCharacterLimit = calculateVisibleLogCharacterLimit();
+        int startIndex = Math.max(0, eventLogEntries.size() - visibleLineCount);
+
+        StringBuilder visibleContentBuilder = new StringBuilder();
+        for (int index = eventLogEntries.size() - 1; index >= startIndex; index--) {
+            if (visibleContentBuilder.length() > 0) {
+                visibleContentBuilder.append(System.lineSeparator());
+            }
+            String sourceLine = eventLogEntries.get(index);
+            visibleContentBuilder.append(truncateLogLineForDisplay(sourceLine, visibleCharacterLimit));
+        }
+
+        eventLogTextArea.setText(visibleContentBuilder.toString());
+        eventLogTextArea.positionCaret(0);
+        eventLogTextArea.deselect();
+    }
+
+    private void rebuildCompleteEventLogContent() {
+        completeEventLogContent.setLength(0);
+        for (int index = 0; index < eventLogEntries.size(); index++) {
+            if (index > 0) {
+                completeEventLogContent.append(System.lineSeparator());
+            }
+            completeEventLogContent.append(eventLogEntries.get(index));
+        }
+    }
+
+    private void replaceEventLogContent(List<String> loadedLogLines) {
+        eventLogEntries.clear();
+        eventLogEntries.addAll(loadedLogLines);
+        rebuildCompleteEventLogContent();
+        refreshVisibleEventLog();
+    }
+
+    private void appendLogEntryLine(String entryLine) {
+        eventLogEntries.add(entryLine);
+        if (completeEventLogContent.length() > 0) {
+            completeEventLogContent.append(System.lineSeparator());
+        }
+        completeEventLogContent.append(entryLine);
+        refreshVisibleEventLog();
     }
 
     private void selectUnitIfAvailable(ComboBox<String> comboBox, String unit) {
@@ -604,6 +713,88 @@ public class PretvornikEnotController {
     }
 
     @FXML
+    private void onOpenLogClick() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Odpri dnevnik dogodkov");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Dnevniške datoteke (*.log)", "*.log"));
+
+        File selectedFile = fileChooser.showOpenDialog(statusLabel.getScene().getWindow());
+        if (selectedFile == null) {
+            updateStatusAndLog("Odpiranje dnevnika je bilo preklicano.");
+            return;
+        }
+
+        try {
+            List<String> loadedLogLines = Files.readAllLines(selectedFile.toPath(), StandardCharsets.UTF_8);
+            replaceEventLogContent(loadedLogLines);
+
+            if (pane3 != null && !pane3.isExpanded()) {
+                pane3.setExpanded(true);
+            }
+            requestAccordionPaneHeightRefresh();
+
+            long fileSize = Files.size(selectedFile.toPath());
+            updateStatusAndLog("Odprt dnevnik: " + selectedFile.getName() + " (" + fileSize + " B), "
+                    + loadedLogLines.size() + " vrstic.");
+        } catch (IOException exception) {
+            updateStatusAndLogError("Napaka pri odpiranju dnevnika: " + exception.getMessage());
+        }
+    }
+
+    @FXML
+    private void onSaveLogClick() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Shrani dnevnik dogodkov");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Dnevniške datoteke (*.log)", "*.log"));
+        fileChooser.setInitialFileName("dnevnik.log");
+
+        File selectedFile = fileChooser.showSaveDialog(statusLabel.getScene().getWindow());
+        if (selectedFile == null) {
+            updateStatusAndLog("Shranjevanje dnevnika je bilo preklicano.");
+            return;
+        }
+
+        try {
+            File targetLogFile = ensureLogFileExtension(selectedFile);
+            Files.writeString(targetLogFile.toPath(), completeEventLogContent.toString(), StandardCharsets.UTF_8);
+            long fileSize = Files.size(targetLogFile.toPath());
+            updateStatusAndLog("Shranjen dnevnik: " + targetLogFile.getName() + " (" + fileSize + " B).");
+        } catch (IOException exception) {
+            updateStatusAndLogError("Napaka pri shranjevanju dnevnika: " + exception.getMessage());
+        }
+    }
+
+    private File ensureLogFileExtension(File selectedFile) {
+        if (selectedFile == null) {
+            return null;
+        }
+
+        String selectedName = selectedFile.getName();
+        if (selectedName.toLowerCase().endsWith(LOG_FILE_EXTENSION)) {
+            return selectedFile;
+        }
+
+        String parentPath = selectedFile.getParent();
+        if (parentPath == null || parentPath.isBlank()) {
+            return new File(selectedName + LOG_FILE_EXTENSION);
+        }
+        return new File(parentPath, selectedName + LOG_FILE_EXTENSION);
+    }
+
+    @FXML
+    private void onClearLogClick() {
+        eventLogEntries.clear();
+        completeEventLogContent.setLength(0);
+        refreshVisibleEventLog();
+
+        if (isStatusResetQueued) {
+            applyNormalStatusStyle();
+            isStatusResetQueued = false;
+        }
+        statusLabel.setText("Dnevnik je počiščen.");
+    }
+
+    @FXML
     private void onClearAllClick() {
         firstValueTextField.clear();
         secondValueTextField.clear();
@@ -627,7 +818,7 @@ public class PretvornikEnotController {
                 if (opened) {
                     updateStatusAndLog("Odprt projekt: " + PROJECT_URL);
                 } else {
-                    updateStatusAndLog("Povezave ni bilo mogoce odpreti samodejno. URL: " + PROJECT_URL);
+                    updateStatusAndLog("Povezave ni bilo mogoče odpreti samodejno. URL: " + PROJECT_URL);
                 }
             });
         }, "about-program-link-opener");
@@ -702,13 +893,13 @@ public class PretvornikEnotController {
         }
 
         if (!line.contains("->")) {
-            appendEventLog("Preskocena neveljavna vrstica zgodovine: " + line);
+            appendEventLog("Preskočena neveljavna vrstica zgodovine: " + line);
             return null;
         }
 
         String[] legacyParts = line.split("->");
         if (legacyParts.length != 2) {
-            appendEventLog("Preskocena neveljavna vrstica zgodovine: " + line);
+            appendEventLog("Preskočena neveljavna vrstica zgodovine: " + line);
             return null;
         }
 
@@ -773,13 +964,7 @@ public class PretvornikEnotController {
     private void appendEventLog(String logMessage) {
         String timestamp = LocalTime.now().format(timestampFormatter);
         String logEntry = "[" + timestamp + "] " + logMessage;
-        if (eventLogTextArea.getText().isBlank()) {
-            eventLogTextArea.setText(logEntry);
-            requestAccordionPaneHeightRefresh();
-            return;
-        }
-        eventLogTextArea.appendText(System.lineSeparator() + logEntry);
-        requestAccordionPaneHeightRefresh();
+        appendLogEntryLine(logEntry);
     }
 
     private void renderHistoryTiles() {
