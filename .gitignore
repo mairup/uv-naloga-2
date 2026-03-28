@@ -24,12 +24,5 @@ Thumbs.db
 
 # Other
 PROJECT_PREFERENCES.md
- 
-# Ignore VS Code workspace settings but keep shared configs
 .vscode/
-!.vscode/extensions.json
-!.vscode/launch.json
-!.vscode/tasks.json
-!.vscode/settings.json
-
-# Do not ignore all dotfiles — removed broad '.*' rule
+.idea/
