@@ -60,8 +60,8 @@ public class PretvornikEnotController {
     private static final String HISTORY_FILE_HEADER = "# firstValue\tfirstUnit\tsecondValue\tsecondUnit";
     private static final String TEXT_FILE_EXTENSION_PATTERN = "*.txt";
     private static final String LOG_FILE_EXTENSION_PATTERN = "*.log";
-    private static final String LOG_FILE_EXTENSION = ".log";
-    private static final String TEXT_FILE_EXTENSION = ".txt";
+    private static final String LOG_SUGGESTED_FILENAME = "dnevnik.log";
+    private static final String HISTORY_SUGGESTED_FILENAME = "pretvorbe.txt";
     private static final String STATUS_ERROR_STYLE_CLASS = "status-label-error";
     private static final String PREVIEW_TARGET_VALUE_STYLE_CLASS = "preview-conversion-value";
     private static final int MAX_EVENT_LOG_ENTRIES = 1000;
@@ -770,17 +770,16 @@ public class PretvornikEnotController {
     @FXML
     private void onSaveClick() {
         File selectedFile = chooseFileForSave("Shrani zgodovino pretvorb", "Besedilne datoteke",
-                TEXT_FILE_EXTENSION_PATTERN, null);
+                TEXT_FILE_EXTENSION_PATTERN, HISTORY_SUGGESTED_FILENAME);
         if (selectedFile == null) {
             updateStatusAndLog("Shranjevanje datoteke je bilo preklicano.");
             return;
         }
 
         try {
-            File targetFile = ensureHistoryFileExtension(selectedFile);
-            Files.writeString(targetFile.toPath(), serializeHistoryEntries(), StandardCharsets.UTF_8);
-            long fileSize = Files.size(targetFile.toPath());
-            updateStatusAndLog("Shranjen zapis: " + targetFile.getName() + " (" + fileSize + " B).");
+            Files.writeString(selectedFile.toPath(), serializeHistoryEntries(), StandardCharsets.UTF_8);
+            long fileSize = Files.size(selectedFile.toPath());
+            updateStatusAndLog("Shranjen zapis: " + selectedFile.getName() + " (" + fileSize + " B).");
         } catch (IOException exception) {
             updateStatusAndLogError("Napaka pri shranjevanju datoteke: " + exception.getMessage());
         }
@@ -812,17 +811,16 @@ public class PretvornikEnotController {
     @FXML
     private void onSaveLogClick() {
         File selectedFile = chooseFileForSave("Shrani dnevnik dogodkov", "Dnevniške datoteke (*.log)",
-                LOG_FILE_EXTENSION_PATTERN, "dnevnik.log");
+                LOG_FILE_EXTENSION_PATTERN, LOG_SUGGESTED_FILENAME);
         if (selectedFile == null) {
             updateStatusAndLog("Shranjevanje dnevnika je bilo preklicano.");
             return;
         }
 
         try {
-            File targetLogFile = ensureLogFileExtension(selectedFile);
-            Files.writeString(targetLogFile.toPath(), serializeEventLogEntries(), StandardCharsets.UTF_8);
-            long fileSize = Files.size(targetLogFile.toPath());
-            updateStatusAndLog("Shranjen dnevnik: " + targetLogFile.getName() + " (" + fileSize + " B).");
+            Files.writeString(selectedFile.toPath(), serializeEventLogEntries(), StandardCharsets.UTF_8);
+            long fileSize = Files.size(selectedFile.toPath());
+            updateStatusAndLog("Shranjen dnevnik: " + selectedFile.getName() + " (" + fileSize + " B).");
         } catch (IOException exception) {
             updateStatusAndLogError("Napaka pri shranjevanju dnevnika: " + exception.getMessage());
         }
@@ -852,24 +850,6 @@ public class PretvornikEnotController {
 
     private String serializeEventLogEntries() {
         return String.join(System.lineSeparator(), eventLogEntries);
-    }
-
-    private File ensureLogFileExtension(File selectedFile) {
-        String selectedName = selectedFile.getName() + LOG_FILE_EXTENSION;
-        String parentPath = selectedFile.getParent();
-        if (parentPath == null || parentPath.isBlank()) {
-            return new File(selectedName);
-        }
-        return new File(parentPath, selectedName);
-    }
-
-    private File ensureHistoryFileExtension(File selectedFile) {
-        String selectedName = selectedFile.getName() + TEXT_FILE_EXTENSION;
-        String parentPath = selectedFile.getParent();
-        if (parentPath == null || parentPath.isBlank()) {
-            return new File(selectedName);
-        }
-        return new File(parentPath, selectedName);
     }
 
     @FXML
