@@ -5,6 +5,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.Scene;
 import javafx.scene.control.Accordion;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -13,6 +14,8 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -125,10 +128,12 @@ public class PretvornikEnotController {
     private boolean isFirstToSecondConversion = true;
     private boolean isStatusResetQueued;
     private boolean isSynchronizingUnitSelection;
+    private boolean isNumericKeyboardFocusHandlerInstalled;
 
     public void initialize() {
         initializeCategoriesAndUnits();
         initializeDynamicConversionBehavior();
+        installNumericKeyboardFocusBehavior();
         initializeToolbarIcons();
         expandOnlyPane(pane1);
         renderHistoryTiles();
@@ -174,6 +179,135 @@ public class PretvornikEnotController {
                 .addListener((observableValue, oldUnit, newUnit) -> onUnitSelectionChanged());
         secondUnitComboBox.valueProperty()
                 .addListener((observableValue, oldUnit, newUnit) -> onUnitSelectionChanged());
+    }
+
+    private void installNumericKeyboardFocusBehavior() {
+        firstValueTextField.sceneProperty()
+                .addListener((observableValue, oldScene, newScene) -> registerNumericKeyboardFocusHandler(newScene));
+        registerNumericKeyboardFocusHandler(firstValueTextField.getScene());
+    }
+
+    private void registerNumericKeyboardFocusHandler(Scene scene) {
+        if (scene == null || isNumericKeyboardFocusHandlerInstalled) {
+            return;
+        }
+
+        scene.addEventFilter(KeyEvent.KEY_TYPED, this::onNumericKeyTyped);
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, this::onCommandKeyPressed);
+        isNumericKeyboardFocusHandlerInstalled = true;
+    }
+
+    private void onNumericKeyTyped(KeyEvent keyEvent) {
+        if (!pane1.isExpanded()) {
+            return;
+        }
+
+        String typedCharacterText = keyEvent.getCharacter();
+        if (typedCharacterText == null || typedCharacterText.isEmpty() || typedCharacterText.length() != 1) {
+            return;
+        }
+
+        char typedCharacter = typedCharacterText.charAt(0);
+        if (!isNumericTypingCharacter(typedCharacter)) {
+            return;
+        }
+
+        TextField sourceValueField = getCurrentSourceValueField();
+
+        if (sourceValueField.isFocused()) {
+            return;
+        }
+
+        String currentText = sourceValueField.getText();
+        boolean alreadyContainsDecimalSeparator = currentText != null
+                && (currentText.contains(".") || currentText.contains(","));
+        if ((typedCharacter == '.' || typedCharacter == ',') && alreadyContainsDecimalSeparator) {
+            keyEvent.consume();
+            return;
+        }
+
+        if (typedCharacter == '-' && currentText != null && !currentText.isBlank()) {
+            keyEvent.consume();
+            return;
+        }
+
+        String normalizedInput = typedCharacter == ',' ? "." : String.valueOf(typedCharacter);
+        sourceValueField.requestFocus();
+        sourceValueField.positionCaret(sourceValueField.getLength());
+        sourceValueField.appendText(normalizedInput);
+        keyEvent.consume();
+    }
+
+    private void onCommandKeyPressed(KeyEvent keyEvent) {
+        if (!pane1.isExpanded()) {
+            return;
+        }
+
+        if (keyEvent.getCode() == KeyCode.ENTER && !keyEvent.isAltDown() && !keyEvent.isControlDown()
+                && !keyEvent.isMetaDown()) {
+            onConvertClick();
+            keyEvent.consume();
+            return;
+        }
+
+        if (keyEvent.getCode() != KeyCode.BACK_SPACE) {
+            return;
+        }
+
+        TextField sourceValueField = getCurrentSourceValueField();
+        if (sourceValueField == null || !sourceValueField.isEditable()) {
+            return;
+        }
+
+        if (sourceValueField.isFocused()) {
+            return;
+        }
+
+        sourceValueField.requestFocus();
+        sourceValueField.positionCaret(sourceValueField.getLength());
+
+        if (keyEvent.isControlDown()) {
+            deletePreviousWordFromEnd(sourceValueField);
+        } else {
+            deleteLastCharacter(sourceValueField);
+        }
+
+        keyEvent.consume();
+    }
+
+    private void deleteLastCharacter(TextField sourceValueField) {
+        String currentText = sourceValueField.getText();
+        if (currentText == null || currentText.isEmpty()) {
+            return;
+        }
+
+        sourceValueField.setText(currentText.substring(0, currentText.length() - 1));
+        sourceValueField.positionCaret(sourceValueField.getLength());
+    }
+
+    private void deletePreviousWordFromEnd(TextField sourceValueField) {
+        String currentText = sourceValueField.getText();
+        if (currentText == null || currentText.isEmpty()) {
+            return;
+        }
+
+        int endIndex = currentText.length();
+        while (endIndex > 0 && Character.isWhitespace(currentText.charAt(endIndex - 1))) {
+            endIndex--;
+        }
+
+        int startIndex = endIndex;
+        while (startIndex > 0 && !Character.isWhitespace(currentText.charAt(startIndex - 1))) {
+            startIndex--;
+        }
+
+        sourceValueField.setText(currentText.substring(0, startIndex));
+        sourceValueField.positionCaret(sourceValueField.getLength());
+    }
+
+    private boolean isNumericTypingCharacter(char inputCharacter) {
+        return Character.isDigit(inputCharacter) || inputCharacter == '.' || inputCharacter == ','
+                || inputCharacter == '-';
     }
 
     private void onConversionValueChanged(TextField changedField) {
