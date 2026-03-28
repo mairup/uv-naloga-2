@@ -11,14 +11,6 @@ The application is built using JavaFX and BootstrapFX, following the assignment 
 - Event log with open/save/clear actions
 - File open/save for conversion history data
 
-## Author
-
-mai
-
-## Note
-
-This project is for educational purposes as part of the FRI User Interfaces course.
-
 ## Screenshots
 
 ![Pretvornik enot - pretvornik](Pretvornik%20enot%20-%20pretvornik.png)
