@@ -1,3 +1,5 @@
+## App name: Pretvornik enot (Unit converter)
+
 ## Second homework project for the User Interfaces class at FRI
 
 The application is built using JavaFX and BootstrapFX, following the assignment requirements for a simple desktop UI with multiple logical sections. The project demonstrates unit conversion workflows, history handling, and event logging in a single-screen application.
