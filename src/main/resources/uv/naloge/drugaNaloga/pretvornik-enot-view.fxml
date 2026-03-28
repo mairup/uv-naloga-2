@@ -152,7 +152,7 @@
                                 <padding>
                                     <Insets top="12" right="12" bottom="12" left="12" />
                                 </padding>
-                                <TextArea fx:id="eventLogTextArea" wrapText="false" editable="false" VBox.vgrow="ALWAYS" maxHeight="Infinity" styleClass="pane-body-content,event-log-text-area" />
+                                <TextArea fx:id="eventLogTextArea" wrapText="false" editable="false" VBox.vgrow="ALWAYS" minHeight="220.0" maxHeight="Infinity" maxWidth="Infinity" styleClass="pane-body-content,event-log-text-area" />
                             </VBox>
                         </content>
                     </TitledPane>

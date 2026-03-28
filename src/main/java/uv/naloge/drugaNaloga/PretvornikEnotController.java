@@ -59,15 +59,7 @@ public class PretvornikEnotController {
     private static final String LOG_FILE_EXTENSION_PATTERN = "*.log";
     private static final String LOG_FILE_EXTENSION = ".log";
     private static final String STATUS_ERROR_STYLE_CLASS = "status-label-error";
-    private static final int MIN_VISIBLE_LOG_LINES = 2;
-    private static final double LOG_LINE_HEIGHT_ESTIMATE = 18;
-    private static final double LOG_CONTENT_VERTICAL_PADDING = 18;
-    private static final double LOG_CHARACTER_WIDTH_ESTIMATE = 7.2;
-    private static final double LOG_HORIZONTAL_PADDING_ESTIMATE = 24;
-    private static final double MIN_LOG_CONTENT_WIDTH = 80;
-    private static final int DEFAULT_VISIBLE_LOG_CHARACTERS = 120;
-    private static final int MIN_VISIBLE_LOG_CHARACTERS = 32;
-    private static final String TRUNCATION_SUFFIX = "...";
+    private static final int MAX_EVENT_LOG_ENTRIES = 1000;
 
     @FXML
     private TextField firstValueTextField;
@@ -134,8 +126,10 @@ public class PretvornikEnotController {
     public void initialize() {
         initializeCategoriesAndUnits();
         initializeToolbarIcons();
+        expandOnlyPane(pane1);
         renderHistoryTiles();
         updateDirectionToggleState();
+        eventLogTextArea.setWrapText(false);
         statusLabel.setText("Pripravljeno.");
         appendEventLog("Aplikacija je pripravljena za delo.");
     }
@@ -311,46 +305,24 @@ public class PretvornikEnotController {
         }
     }
 
-    private int calculateVisibleLogLineCount() {
-        if (eventLogTextArea == null) {
-            return MIN_VISIBLE_LOG_LINES;
+    private void applyEventLogRetentionLimit() {
+        int exceededEntries = eventLogEntries.size() - MAX_EVENT_LOG_ENTRIES;
+        if (exceededEntries <= 0) {
+            return;
         }
-
-        double availableHeight = eventLogTextArea.getHeight();
-        if (availableHeight <= 0) {
-            availableHeight = eventLogTextArea.prefHeight(-1);
-        }
-
-        double usableHeight = Math.max(0, availableHeight - LOG_CONTENT_VERTICAL_PADDING);
-        int estimatedLineCount = (int) Math.floor(usableHeight / LOG_LINE_HEIGHT_ESTIMATE);
-        return Math.max(MIN_VISIBLE_LOG_LINES, estimatedLineCount);
+        eventLogEntries.remove(0, exceededEntries);
     }
 
-    private int calculateVisibleLogCharacterLimit() {
+    private void scrollEventLogToBottom() {
         if (eventLogTextArea == null) {
-            return DEFAULT_VISIBLE_LOG_CHARACTERS;
+            return;
         }
 
-        double availableWidth = eventLogTextArea.getWidth();
-        if (availableWidth <= 0) {
-            availableWidth = eventLogTextArea.prefWidth(-1);
-        }
-
-        double usableWidth = Math.max(MIN_LOG_CONTENT_WIDTH, availableWidth - LOG_HORIZONTAL_PADDING_ESTIMATE);
-        int estimatedCharacterCount = (int) Math.floor(usableWidth / LOG_CHARACTER_WIDTH_ESTIMATE);
-        return Math.max(MIN_VISIBLE_LOG_CHARACTERS, estimatedCharacterCount);
-    }
-
-    private String truncateLogLineForDisplay(String line, int maxCharacters) {
-        if (line == null) {
-            return "";
-        }
-        if (line.length() <= maxCharacters) {
-            return line;
-        }
-
-        int safeTextLength = Math.max(1, maxCharacters - TRUNCATION_SUFFIX.length());
-        return line.substring(0, safeTextLength) + TRUNCATION_SUFFIX;
+        Platform.runLater(() -> {
+            eventLogTextArea.setScrollTop(Double.MAX_VALUE);
+            eventLogTextArea.setScrollLeft(0);
+            eventLogTextArea.deselect();
+        });
     }
 
     private void refreshVisibleEventLog() {
@@ -363,31 +335,19 @@ public class PretvornikEnotController {
             return;
         }
 
-        int visibleLineCount = calculateVisibleLogLineCount();
-        int visibleCharacterLimit = calculateVisibleLogCharacterLimit();
-        int startIndex = Math.max(0, eventLogEntries.size() - visibleLineCount);
-
-        StringBuilder visibleContentBuilder = new StringBuilder();
-        for (int index = eventLogEntries.size() - 1; index >= startIndex; index--) {
-            if (visibleContentBuilder.length() > 0) {
-                visibleContentBuilder.append(System.lineSeparator());
-            }
-            String sourceLine = eventLogEntries.get(index);
-            visibleContentBuilder.append(truncateLogLineForDisplay(sourceLine, visibleCharacterLimit));
-        }
-
-        eventLogTextArea.setText(visibleContentBuilder.toString());
-        eventLogTextArea.positionCaret(0);
-        eventLogTextArea.deselect();
+        eventLogTextArea.setText(String.join(System.lineSeparator(), eventLogEntries));
+        scrollEventLogToBottom();
     }
 
     private void replaceEventLogContent(List<String> loadedLogLines) {
         eventLogEntries.setAll(loadedLogLines);
+        applyEventLogRetentionLimit();
         refreshVisibleEventLog();
     }
 
     private void appendLogEntryLine(String entryLine) {
         eventLogEntries.add(entryLine);
+        applyEventLogRetentionLimit();
         refreshVisibleEventLog();
     }
 
@@ -528,6 +488,7 @@ public class PretvornikEnotController {
             }
 
             renderHistoryTiles();
+            expandOnlyPane(pane2);
 
             long fileSize = Files.size(selectedFile.toPath());
             updateStatusAndLog("Odprta datoteka: " + selectedFile.getName() + " (" + fileSize + " B), "
@@ -566,8 +527,9 @@ public class PretvornikEnotController {
 
         try {
             List<String> loadedLogLines = Files.readAllLines(selectedFile.toPath(), StandardCharsets.UTF_8);
-            replaceEventLogContent(loadedLogLines);
             expandOnlyPane(pane3);
+            replaceEventLogContent(loadedLogLines);
+            scrollEventLogToBottom();
 
             long fileSize = Files.size(selectedFile.toPath());
             updateStatusAndLog("Odprt dnevnik: " + selectedFile.getName() + " (" + fileSize + " B), "

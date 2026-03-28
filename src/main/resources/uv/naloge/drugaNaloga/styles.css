@@ -235,16 +235,53 @@
 
 .event-log-text-area .scroll-bar:vertical,
 .event-log-text-area .scroll-bar:horizontal {
-  -fx-pref-width: 0;
-  -fx-pref-height: 0;
-  -fx-opacity: 0;
+  -fx-background-color: transparent;
+  -fx-opacity: 1;
+  -fx-padding: 2;
+}
+
+.event-log-text-area .scroll-bar:vertical {
+  -fx-pref-width: 12;
+}
+
+.event-log-text-area .scroll-bar:horizontal {
+  -fx-pref-height: 12;
+}
+
+.event-log-text-area .scroll-bar .track {
+  -fx-background-color: #e8dfd8;
+  -fx-background-radius: 8;
+}
+
+.event-log-text-area .scroll-bar .thumb {
+  -fx-background-color: #c89c8a;
+  -fx-background-radius: 8;
+}
+
+.event-log-text-area .scroll-bar .thumb:hover {
+  -fx-background-color: #b98571;
+}
+
+.event-log-text-area .scroll-bar .increment-button,
+.event-log-text-area .scroll-bar .decrement-button {
+  -fx-background-color: transparent;
   -fx-padding: 0;
+}
+
+.event-log-text-area .scroll-bar .increment-arrow,
+.event-log-text-area .scroll-bar .decrement-arrow {
+  -fx-background-color: transparent;
 }
 
 .pane-body-content {
   -fx-text-fill: #3a312d;
 }
 
+/* Category title label (e.g. "Kategorija:") - use dark brown to match other title-like text */
+.category-title-label {
+  -fx-text-fill: #3a312d;
+  -fx-font-weight: bold;
+}
 .pane-body-content > .text {
   -fx-fill: #3a312d;
 }
@@ -356,6 +393,13 @@
   -fx-background-radius: 6;
   -fx-border-radius: 6;
   -fx-text-fill: #3a2a23;
+}
+
+/* Ensure category title label uses the same dark brown as other title-like text. Placed at end to override earlier rules. */
+.category-title-row .category-title-label,
+.category-title-label.label {
+  -fx-text-fill: #3a312d;
+  -fx-font-weight: bold;
 }
 
 .earth-input:focused {
