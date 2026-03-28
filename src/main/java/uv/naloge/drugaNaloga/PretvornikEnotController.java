@@ -58,7 +58,9 @@ public class PretvornikEnotController {
     private static final String TEXT_FILE_EXTENSION_PATTERN = "*.txt";
     private static final String LOG_FILE_EXTENSION_PATTERN = "*.log";
     private static final String LOG_FILE_EXTENSION = ".log";
+    private static final String TEXT_FILE_EXTENSION = ".txt";
     private static final String STATUS_ERROR_STYLE_CLASS = "status-label-error";
+    private static final String PREVIEW_TARGET_VALUE_STYLE_CLASS = "preview-conversion-value";
     private static final int MAX_EVENT_LOG_ENTRIES = 1000;
 
     @FXML
@@ -122,13 +124,17 @@ public class PretvornikEnotController {
     private final ObservableList<String> eventLogEntries = FXCollections.observableArrayList();
     private boolean isFirstToSecondConversion = true;
     private boolean isStatusResetQueued;
+    private boolean isSynchronizingUnitSelection;
 
     public void initialize() {
         initializeCategoriesAndUnits();
+        initializeDynamicConversionBehavior();
         initializeToolbarIcons();
         expandOnlyPane(pane1);
         renderHistoryTiles();
         updateDirectionToggleState();
+        updateInputFieldInteractivityForDirection();
+        applyPreviewStyleToCurrentTarget(false);
         eventLogTextArea.setWrapText(false);
         statusLabel.setText("Pripravljeno.");
         appendEventLog("Aplikacija je pripravljena za delo.");
@@ -158,6 +164,32 @@ public class PretvornikEnotController {
         exitToolbarButton.setGraphic(new FontIcon("fas-sign-out-alt"));
     }
 
+    private void initializeDynamicConversionBehavior() {
+        firstValueTextField.textProperty()
+                .addListener((observableValue, oldText, newText) -> onConversionValueChanged(firstValueTextField));
+        secondValueTextField.textProperty()
+                .addListener((observableValue, oldText, newText) -> onConversionValueChanged(secondValueTextField));
+
+        firstUnitComboBox.valueProperty()
+                .addListener((observableValue, oldUnit, newUnit) -> onUnitSelectionChanged());
+        secondUnitComboBox.valueProperty()
+                .addListener((observableValue, oldUnit, newUnit) -> onUnitSelectionChanged());
+    }
+
+    private void onConversionValueChanged(TextField changedField) {
+        if (changedField != getCurrentSourceValueField()) {
+            return;
+        }
+        updateLiveConversionPreview();
+    }
+
+    private void onUnitSelectionChanged() {
+        if (isSynchronizingUnitSelection) {
+            return;
+        }
+        updateUnitsForSelectedCategory();
+    }
+
     @FXML
     private void onCategoryChanged() {
         updateUnitsForSelectedCategory();
@@ -169,13 +201,45 @@ public class PretvornikEnotController {
         String selectedCategory = categoryComboBox.getValue();
         List<String> units = unitsByCategory.getOrDefault(selectedCategory, List.of());
 
-        firstUnitComboBox.getItems().setAll(units);
-        secondUnitComboBox.getItems().setAll(units);
+        ComboBox<String> sourceUnitComboBox = getCurrentSourceUnitField();
+        ComboBox<String> targetUnitComboBox = getCurrentTargetUnitField();
 
-        if (!units.isEmpty()) {
-            firstUnitComboBox.getSelectionModel().selectFirst();
-            secondUnitComboBox.getSelectionModel().select(Math.min(1, units.size() - 1));
+        String previouslySelectedSourceUnit = sourceUnitComboBox.getValue();
+        String previouslySelectedTargetUnit = targetUnitComboBox.getValue();
+
+        isSynchronizingUnitSelection = true;
+        try {
+            sourceUnitComboBox.getItems().setAll(units);
+            if (!units.isEmpty()) {
+                if (previouslySelectedSourceUnit != null && units.contains(previouslySelectedSourceUnit)) {
+                    sourceUnitComboBox.getSelectionModel().select(previouslySelectedSourceUnit);
+                } else {
+                    sourceUnitComboBox.getSelectionModel().selectFirst();
+                }
+            } else {
+                sourceUnitComboBox.getSelectionModel().clearSelection();
+            }
+
+            String currentlySelectedSourceUnit = sourceUnitComboBox.getValue();
+            List<String> targetUnits = units.stream()
+                    .filter(unit -> !Objects.equals(unit, currentlySelectedSourceUnit))
+                    .toList();
+
+            targetUnitComboBox.getItems().setAll(targetUnits);
+            if (!targetUnits.isEmpty()) {
+                if (previouslySelectedTargetUnit != null && targetUnits.contains(previouslySelectedTargetUnit)) {
+                    targetUnitComboBox.getSelectionModel().select(previouslySelectedTargetUnit);
+                } else {
+                    targetUnitComboBox.getSelectionModel().selectFirst();
+                }
+            } else {
+                targetUnitComboBox.getSelectionModel().clearSelection();
+            }
+        } finally {
+            isSynchronizingUnitSelection = false;
         }
+
+        updateLiveConversionPreview();
     }
 
     @FXML
@@ -204,6 +268,8 @@ public class PretvornikEnotController {
     private void onToggleDirectionClick() {
         isFirstToSecondConversion = !isFirstToSecondConversion;
         updateDirectionToggleState();
+        updateUnitsForSelectedCategory();
+        updateInputFieldInteractivityForDirection();
         updateStatusAndLog("Smer pretvorbe je nastavljena na " + getDirectionDescription() + ".");
     }
 
@@ -254,6 +320,7 @@ public class PretvornikEnotController {
         String conversionEntry = historyEntry.getFirstDisplay() + " -> " + historyEntry.getSecondDisplay();
 
         targetValueField.setText(targetValueText);
+        applyPreviewStyleToCurrentTarget(false);
         if (isSameAsLastHistoryEntry(historyEntry)) {
             updateStatusAndLog("Pretvorba je enaka zadnji, zato ni bila dodana v zgodovino: " + conversionEntry + ".");
             return;
@@ -292,6 +359,7 @@ public class PretvornikEnotController {
         secondValueTextField.setText(entry.getSecondValueText());
         selectUnitIfAvailable(firstUnitComboBox, entry.getFirstUnit());
         selectUnitIfAvailable(secondUnitComboBox, entry.getSecondUnit());
+        applyPreviewStyleToCurrentTarget(false);
 
         updateStatusAndLog("Obnovljena pretvorba: " + entry.getFirstDisplay() + " -> " + entry.getSecondDisplay()
                 + ".");
@@ -301,8 +369,10 @@ public class PretvornikEnotController {
         if (!isFirstToSecondConversion) {
             isFirstToSecondConversion = true;
             updateDirectionToggleState();
+            updateUnitsForSelectedCategory();
             appendEventLog("Smer pretvorbe je bila ob obnovitvi nastavljena navzdol.");
         }
+        updateInputFieldInteractivityForDirection();
     }
 
     private void applyEventLogRetentionLimit() {
@@ -390,6 +460,71 @@ public class PretvornikEnotController {
 
     private String getDirectionDescription() {
         return isFirstToSecondConversion ? "prve navzdol proti drugi" : "druge navzgor proti prvi";
+    }
+
+    private void updateInputFieldInteractivityForDirection() {
+        TextField sourceField = getCurrentSourceValueField();
+        TextField targetField = getCurrentTargetValueField();
+
+        sourceField.setEditable(true);
+        sourceField.setFocusTraversable(true);
+        sourceField.setMouseTransparent(false);
+
+        targetField.setEditable(false);
+        targetField.setFocusTraversable(false);
+        targetField.setMouseTransparent(true);
+        targetField.deselect();
+
+        if (targetField.isFocused()) {
+            Platform.runLater(sourceField::requestFocus);
+        }
+    }
+
+    private void applyPreviewStyleToCurrentTarget(boolean showPreviewStyle) {
+        firstValueTextField.getStyleClass().remove(PREVIEW_TARGET_VALUE_STYLE_CLASS);
+        secondValueTextField.getStyleClass().remove(PREVIEW_TARGET_VALUE_STYLE_CLASS);
+
+        if (!showPreviewStyle) {
+            return;
+        }
+
+        TextField targetValueField = getCurrentTargetValueField();
+        if (!targetValueField.getStyleClass().contains(PREVIEW_TARGET_VALUE_STYLE_CLASS)) {
+            targetValueField.getStyleClass().add(PREVIEW_TARGET_VALUE_STYLE_CLASS);
+        }
+    }
+
+    private void updateLiveConversionPreview() {
+        TextField sourceValueField = getCurrentSourceValueField();
+        TextField targetValueField = getCurrentTargetValueField();
+
+        String inputText = sourceValueField.getText();
+        if (inputText == null || inputText.isBlank()) {
+            targetValueField.clear();
+            applyPreviewStyleToCurrentTarget(false);
+            return;
+        }
+
+        String selectedCategory = categoryComboBox.getValue();
+        String selectedSourceUnit = getCurrentSourceUnitField().getValue();
+        String selectedTargetUnit = getCurrentTargetUnitField().getValue();
+
+        Double sourceNumericValue = tryParseDouble(inputText.trim().replace(',', '.'));
+        if (sourceNumericValue == null) {
+            targetValueField.clear();
+            applyPreviewStyleToCurrentTarget(false);
+            return;
+        }
+
+        try {
+            double convertedValue = convertValue(selectedCategory, selectedSourceUnit, selectedTargetUnit,
+                    sourceNumericValue);
+            targetValueField.setText(formatNumber(convertedValue));
+            applyPreviewStyleToCurrentTarget(true);
+        } catch (IllegalStateException exception) {
+            targetValueField.clear();
+            applyPreviewStyleToCurrentTarget(false);
+        }
     }
 
     private void updateDirectionToggleState() {
@@ -508,9 +643,10 @@ public class PretvornikEnotController {
         }
 
         try {
-            Files.writeString(selectedFile.toPath(), serializeHistoryEntries(), StandardCharsets.UTF_8);
-            long fileSize = Files.size(selectedFile.toPath());
-            updateStatusAndLog("Shranjen zapis: " + selectedFile.getName() + " (" + fileSize + " B).");
+            File targetFile = ensureHistoryFileExtension(selectedFile);
+            Files.writeString(targetFile.toPath(), serializeHistoryEntries(), StandardCharsets.UTF_8);
+            long fileSize = Files.size(targetFile.toPath());
+            updateStatusAndLog("Shranjen zapis: " + targetFile.getName() + " (" + fileSize + " B).");
         } catch (IOException exception) {
             updateStatusAndLogError("Napaka pri shranjevanju datoteke: " + exception.getMessage());
         }
@@ -586,6 +722,15 @@ public class PretvornikEnotController {
 
     private File ensureLogFileExtension(File selectedFile) {
         String selectedName = selectedFile.getName() + LOG_FILE_EXTENSION;
+        String parentPath = selectedFile.getParent();
+        if (parentPath == null || parentPath.isBlank()) {
+            return new File(selectedName);
+        }
+        return new File(parentPath, selectedName);
+    }
+
+    private File ensureHistoryFileExtension(File selectedFile) {
+        String selectedName = selectedFile.getName() + TEXT_FILE_EXTENSION;
         String parentPath = selectedFile.getParent();
         if (parentPath == null || parentPath.isBlank()) {
             return new File(selectedName);

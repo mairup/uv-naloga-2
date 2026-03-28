@@ -126,6 +126,12 @@
   -fx-max-width: Infinity;
 }
 
+.custom-accordion-pane > .title:hover {
+  -fx-background-color: #efcfbf;
+  -fx-border-color: transparent;
+  -fx-border-width: 0;
+}
+
 .custom-accordion-pane > .title > .arrow-button {
   -fx-background-color: transparent;
   -fx-effect: null;
@@ -142,7 +148,7 @@
 }
 
 .custom-accordion-pane > *.content {
-  -fx-background-color: transparent;
+  -fx-background-color: #fdfdfb;
   -fx-background-radius: 0 0 8 8;
   -fx-border-color: transparent;
   -fx-border-width: 0;
@@ -277,7 +283,6 @@
   -fx-text-fill: #3a312d;
 }
 
-/* Category title label (e.g. "Kategorija:") - use dark brown to match other title-like text */
 .category-title-label {
   -fx-text-fill: #3a312d;
   -fx-font-weight: bold;
@@ -395,7 +400,10 @@
   -fx-text-fill: #3a2a23;
 }
 
-/* Ensure category title label uses the same dark brown as other title-like text. Placed at end to override earlier rules. */
+.preview-conversion-value {
+  -fx-text-fill: rgba(58, 42, 35, 0.55);
+}
+
 .category-title-row .category-title-label,
 .category-title-label.label {
   -fx-text-fill: #3a312d;
