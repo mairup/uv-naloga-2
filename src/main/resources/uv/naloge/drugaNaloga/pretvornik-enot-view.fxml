@@ -4,6 +4,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Accordion?>
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
@@ -36,7 +37,7 @@
                 <Menu text="_Uredi">
                     <MenuItem text="_Pobriši" onAction="#onClearAllClick" accelerator="Shortcut+R" />
                 </Menu>
-                <Menu text="_Dnevnik">
+                <Menu text="D_nevnik">
                     <MenuItem text="_Odpri dnevnik" onAction="#onOpenLogClick" accelerator="Shortcut+Shift+O" />
                     <MenuItem text="_Shrani dnevnik" onAction="#onSaveLogClick" accelerator="Shortcut+Shift+S" />
                     <MenuItem text="_Počisti dnevnik" onAction="#onClearLogClick" accelerator="Shortcut+Shift+R" />
@@ -63,7 +64,8 @@
 
     <center>
         <VBox style="-fx-padding: 12;" spacing="10.0">
-            <VBox fx:id="accordionContainer" VBox.vgrow="ALWAYS" maxWidth="Infinity" styleClass="custom-accordion" spacing="10.0">
+            <Accordion fx:id="accordionContainer" VBox.vgrow="ALWAYS" maxWidth="Infinity" styleClass="custom-accordion">
+                <panes>
                 <TitledPane fx:id="pane1" text="Pretvornik enot" expanded="true" maxWidth="Infinity" styleClass="custom-accordion-pane">
                     <content>
                             <VBox styleClass="pane-content-shell">
@@ -154,7 +156,8 @@
                             </VBox>
                         </content>
                     </TitledPane>
-                    </VBox>
+                </panes>
+                    </Accordion>
                 </VBox>
     </center>
 

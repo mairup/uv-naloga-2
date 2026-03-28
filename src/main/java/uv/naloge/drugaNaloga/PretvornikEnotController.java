@@ -1,12 +1,11 @@
 package uv.naloge.drugaNaloga;
 
-import java.awt.Desktop;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.Node;
+import javafx.scene.control.Accordion;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -23,7 +22,6 @@ import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.DecimalFormat;
@@ -33,6 +31,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class PretvornikEnotController {
 
@@ -52,18 +51,21 @@ public class PretvornikEnotController {
     private static final String GRAM_UNIT = "g";
     private static final String OUNCE_UNIT = "oz";
 
-    private static final String AUTHOR_INFORMATION = "Avtor: Mai Rupnik, 2. letnik, BVS-RI @ FRI, UNI-LJ";
+    private static final String AUTHOR_INFORMATION = "Avtor: Mai Rupnik, 2. letnik, BVS-RI @ FRI UNI-LJ";
     private static final String PROJECT_URL = "https://github.com/mairup/uv-naloga-2";
     private static final String HISTORY_FILE_DELIMITER = "\t";
+    private static final String HISTORY_FILE_HEADER = "# firstValue\tfirstUnit\tsecondValue\tsecondUnit";
+    private static final String TEXT_FILE_EXTENSION_PATTERN = "*.txt";
+    private static final String LOG_FILE_EXTENSION_PATTERN = "*.log";
     private static final String LOG_FILE_EXTENSION = ".log";
     private static final String STATUS_ERROR_STYLE_CLASS = "status-label-error";
-    private static final double MIN_EXPANDED_PANE_CONTENT_HEIGHT = 80;
-    private static final double ACCORDION_VERTICAL_SPACING = 10;
     private static final int MIN_VISIBLE_LOG_LINES = 2;
     private static final double LOG_LINE_HEIGHT_ESTIMATE = 18;
     private static final double LOG_CONTENT_VERTICAL_PADDING = 18;
     private static final double LOG_CHARACTER_WIDTH_ESTIMATE = 7.2;
     private static final double LOG_HORIZONTAL_PADDING_ESTIMATE = 24;
+    private static final double MIN_LOG_CONTENT_WIDTH = 80;
+    private static final int DEFAULT_VISIBLE_LOG_CHARACTERS = 120;
     private static final int MIN_VISIBLE_LOG_CHARACTERS = 32;
     private static final String TRUNCATION_SUFFIX = "...";
 
@@ -104,7 +106,7 @@ public class PretvornikEnotController {
     private TitledPane pane3;
 
     @FXML
-    private VBox accordionContainer;
+    private Accordion accordionContainer;
 
     @FXML
     private Button openToolbarButton;
@@ -126,7 +128,6 @@ public class PretvornikEnotController {
     private final DateTimeFormatter timestampFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
     private final ObservableList<HistoryEntry> historyEntries = FXCollections.observableArrayList();
     private final ObservableList<String> eventLogEntries = FXCollections.observableArrayList();
-    private final StringBuilder completeEventLogContent = new StringBuilder();
     private boolean isFirstToSecondConversion = true;
     private boolean isStatusResetQueued;
 
@@ -137,61 +138,13 @@ public class PretvornikEnotController {
         updateDirectionToggleState();
         statusLabel.setText("Pripravljeno.");
         appendEventLog("Aplikacija je pripravljena za delo.");
-
-        setupAccordionLogic();
-        setupDynamicPaneHeightManagement();
-        requestAccordionPaneHeightRefresh();
     }
 
-    private void setupAccordionLogic() {
-        TitledPane[] panes = { pane1, pane2, pane3 };
-        for (TitledPane pane : panes) {
-            if (pane != null) {
-                pane.expandedProperty().addListener((obs, wasExpanded, isNowExpanded) -> {
-                    if (isNowExpanded) {
-                        for (TitledPane other : panes) {
-                            if (other != pane && other != null) {
-                                other.setExpanded(false);
-                            }
-                        }
-                    }
-                    requestAccordionPaneHeightRefresh();
-                });
-            }
+    private void expandOnlyPane(TitledPane paneToExpand) {
+        if (paneToExpand == null || accordionContainer == null) {
+            return;
         }
-    }
-
-    private void setupDynamicPaneHeightManagement() {
-        if (eventLogTextArea != null) {
-            eventLogTextArea.setPrefHeight(Region.USE_COMPUTED_SIZE);
-            eventLogTextArea.setMinHeight(Region.USE_COMPUTED_SIZE);
-            eventLogTextArea.setMaxHeight(Double.MAX_VALUE);
-            eventLogTextArea.heightProperty().addListener((obs, oldHeight, newHeight) -> refreshVisibleEventLog());
-            eventLogTextArea.widthProperty().addListener((obs, oldWidth, newWidth) -> refreshVisibleEventLog());
-        }
-
-        if (historyScrollPane != null) {
-            historyScrollPane.setPrefHeight(Region.USE_COMPUTED_SIZE);
-            historyScrollPane.setMinHeight(MIN_EXPANDED_PANE_CONTENT_HEIGHT);
-            historyScrollPane.setMaxHeight(Double.MAX_VALUE);
-        }
-
-        if (accordionContainer != null) {
-            accordionContainer.sceneProperty().addListener((obs, oldScene, newScene) -> {
-                if (newScene != null) {
-                    newScene.heightProperty()
-                            .addListener((sceneObs, oldHeight, newHeight) -> requestAccordionPaneHeightRefresh());
-                    newScene.windowProperty().addListener((windowObs, oldWindow, newWindow) -> {
-                        if (newWindow != null) {
-                            newWindow.heightProperty().addListener(
-                                    (heightObs, oldHeight, newHeight) -> requestAccordionPaneHeightRefresh());
-                        }
-                    });
-                }
-            });
-            accordionContainer.heightProperty()
-                    .addListener((obs, oldHeight, newHeight) -> requestAccordionPaneHeightRefresh());
-        }
+        accordionContainer.setExpandedPane(paneToExpand);
     }
 
     private void initializeCategoriesAndUnits() {
@@ -282,16 +235,20 @@ public class PretvornikEnotController {
             return;
         }
 
-        double inputNumericValue;
-        try {
-            inputNumericValue = Double.parseDouble(inputText);
-        } catch (NumberFormatException exception) {
+        Double inputNumericValue = tryParseDouble(inputText);
+        if (inputNumericValue == null) {
             updateStatusAndLogError("Napaka pri vnosu: " + inputText + ".");
             return;
         }
 
-        double convertedValue = convertValue(selectedCategory, selectedSourceUnit, selectedTargetUnit,
-                inputNumericValue);
+        double convertedValue;
+        try {
+            convertedValue = convertValue(selectedCategory, selectedSourceUnit, selectedTargetUnit,
+                    inputNumericValue);
+        } catch (IllegalStateException exception) {
+            updateStatusAndLogError("Napaka pretvorbe: " + exception.getMessage());
+            return;
+        }
         String sourceValueText = formatNumber(inputNumericValue);
         String targetValueText = formatNumber(convertedValue);
 
@@ -315,25 +272,21 @@ public class PretvornikEnotController {
         if (historyEntries.isEmpty()) {
             return false;
         }
-
         HistoryEntry lastEntry = historyEntries.get(historyEntries.size() - 1);
-        return currentEntry.getFirstValueText().equals(lastEntry.getFirstValueText())
-                && currentEntry.getFirstUnit().equals(lastEntry.getFirstUnit())
-                && currentEntry.getSecondValueText().equals(lastEntry.getSecondValueText())
-                && currentEntry.getSecondUnit().equals(lastEntry.getSecondUnit());
+        return currentEntry.equals(lastEntry);
+    }
+
+    private Double tryParseDouble(String text) {
+        try {
+            return Double.parseDouble(text);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private void restoreHistoryEntry(HistoryEntry entry) {
-        if (pane1 != null && !pane1.isExpanded()) {
-            pane1.setExpanded(true);
-            appendEventLog("Ob obnovitvi je bil odprt razdelek Pretvornik enot.");
-        }
-
-        if (!isFirstToSecondConversion) {
-            isFirstToSecondConversion = true;
-            updateDirectionToggleState();
-            appendEventLog("Smer pretvorbe je bila ob obnovitvi nastavljena navzdol.");
-        }
+        expandOnlyPane(pane1);
+        resetDirectionToFirstDownwardIfNeeded();
 
         String targetCategory = getCategoryForUnit(entry.getFirstUnit());
         if (targetCategory != null && !targetCategory.equals(categoryComboBox.getValue())) {
@@ -345,84 +298,17 @@ public class PretvornikEnotController {
         secondValueTextField.setText(entry.getSecondValueText());
         selectUnitIfAvailable(firstUnitComboBox, entry.getFirstUnit());
         selectUnitIfAvailable(secondUnitComboBox, entry.getSecondUnit());
-        scrollConverterIntoView();
 
         updateStatusAndLog("Obnovljena pretvorba: " + entry.getFirstDisplay() + " -> " + entry.getSecondDisplay()
                 + ".");
     }
 
-    private void scrollConverterIntoView() {
-        if (pane1 != null && !pane1.isExpanded()) {
-            pane1.setExpanded(true);
+    private void resetDirectionToFirstDownwardIfNeeded() {
+        if (!isFirstToSecondConversion) {
+            isFirstToSecondConversion = true;
+            updateDirectionToggleState();
+            appendEventLog("Smer pretvorbe je bila ob obnovitvi nastavljena navzdol.");
         }
-    }
-
-    private void requestAccordionPaneHeightRefresh() {
-        Platform.runLater(this::refreshAccordionPaneHeights);
-    }
-
-    private void refreshAccordionPaneHeights() {
-        double maxExpandedContentHeight = computeExpandedPaneContentMaxHeight();
-
-        if (pane2 != null && pane2.isExpanded()) {
-            Region historyContentRegion = getHistoryContentRegion();
-            if (historyContentRegion != null) {
-                double preferredHeight = maxExpandedContentHeight;
-                applyDynamicContentHeight(historyContentRegion, preferredHeight, maxExpandedContentHeight);
-            }
-        }
-
-        if (pane3 != null && pane3.isExpanded() && eventLogTextArea != null) {
-            double preferredHeight = maxExpandedContentHeight;
-            applyDynamicContentHeight(eventLogTextArea, preferredHeight, maxExpandedContentHeight);
-            refreshVisibleEventLog();
-        }
-    }
-
-    private Region getHistoryContentRegion() {
-        return historyScrollPane;
-    }
-
-    private double computeExpandedPaneContentMaxHeight() {
-        if (accordionContainer == null) {
-            return Double.MAX_VALUE;
-        }
-
-        double totalHeight = accordionContainer.getHeight();
-        if (totalHeight <= 0) {
-            return Double.MAX_VALUE;
-        }
-
-        double headerHeights = resolvePaneTitleHeight(pane1) + resolvePaneTitleHeight(pane2)
-                + resolvePaneTitleHeight(pane3);
-        double spacingHeights = ACCORDION_VERTICAL_SPACING * 2;
-        double availableHeight = totalHeight - headerHeights - spacingHeights;
-        return Math.max(MIN_EXPANDED_PANE_CONTENT_HEIGHT, availableHeight);
-    }
-
-    private double resolvePaneTitleHeight(TitledPane pane) {
-        if (pane == null) {
-            return 0;
-        }
-        Node titleNode = pane.lookup(".title");
-        if (titleNode != null) {
-            return titleNode.getBoundsInLocal().getHeight();
-        }
-        return 40;
-    }
-
-    private void applyDynamicContentHeight(Region contentRegion, double preferredHeight, double maxHeight) {
-        if (contentRegion == null) {
-            return;
-        }
-
-        double safeMaxHeight = maxHeight > 0 ? maxHeight : MIN_EXPANDED_PANE_CONTENT_HEIGHT;
-        double safePreferredHeight = Math.max(MIN_EXPANDED_PANE_CONTENT_HEIGHT, preferredHeight);
-        double clampedHeight = Math.min(safePreferredHeight, safeMaxHeight);
-
-        contentRegion.setMinHeight(Region.USE_COMPUTED_SIZE);
-        contentRegion.setPrefHeight(clampedHeight);
-        contentRegion.setMaxHeight(safeMaxHeight);
     }
 
     private int calculateVisibleLogLineCount() {
@@ -442,7 +328,7 @@ public class PretvornikEnotController {
 
     private int calculateVisibleLogCharacterLimit() {
         if (eventLogTextArea == null) {
-            return 120;
+            return DEFAULT_VISIBLE_LOG_CHARACTERS;
         }
 
         double availableWidth = eventLogTextArea.getWidth();
@@ -450,7 +336,7 @@ public class PretvornikEnotController {
             availableWidth = eventLogTextArea.prefWidth(-1);
         }
 
-        double usableWidth = Math.max(80, availableWidth - LOG_HORIZONTAL_PADDING_ESTIMATE);
+        double usableWidth = Math.max(MIN_LOG_CONTENT_WIDTH, availableWidth - LOG_HORIZONTAL_PADDING_ESTIMATE);
         int estimatedCharacterCount = (int) Math.floor(usableWidth / LOG_CHARACTER_WIDTH_ESTIMATE);
         return Math.max(MIN_VISIBLE_LOG_CHARACTERS, estimatedCharacterCount);
     }
@@ -495,36 +381,23 @@ public class PretvornikEnotController {
         eventLogTextArea.deselect();
     }
 
-    private void rebuildCompleteEventLogContent() {
-        completeEventLogContent.setLength(0);
-        for (int index = 0; index < eventLogEntries.size(); index++) {
-            if (index > 0) {
-                completeEventLogContent.append(System.lineSeparator());
-            }
-            completeEventLogContent.append(eventLogEntries.get(index));
-        }
-    }
-
     private void replaceEventLogContent(List<String> loadedLogLines) {
-        eventLogEntries.clear();
-        eventLogEntries.addAll(loadedLogLines);
-        rebuildCompleteEventLogContent();
+        eventLogEntries.setAll(loadedLogLines);
         refreshVisibleEventLog();
     }
 
     private void appendLogEntryLine(String entryLine) {
         eventLogEntries.add(entryLine);
-        if (completeEventLogContent.length() > 0) {
-            completeEventLogContent.append(System.lineSeparator());
-        }
-        completeEventLogContent.append(entryLine);
         refreshVisibleEventLog();
     }
 
     private void selectUnitIfAvailable(ComboBox<String> comboBox, String unit) {
         if (comboBox.getItems().contains(unit)) {
             comboBox.getSelectionModel().select(unit);
+            return;
         }
+
+        appendEventLog("Nepodprta enota pri obnovi zapisa: " + unit);
     }
 
     private String getCategoryForUnit(String unit) {
@@ -571,93 +444,66 @@ public class PretvornikEnotController {
             return value;
         }
 
-        if (LENGTH_CATEGORY.equals(category)) {
-            double valueInMeters = convertLengthToMeters(sourceUnit, value);
-            return convertMetersToTargetUnit(targetUnit, valueInMeters);
-        }
+        return switch (category) {
+            case LENGTH_CATEGORY -> convertMetersToTargetUnit(targetUnit, convertLengthToMeters(sourceUnit, value));
+            case TEMPERATURE_CATEGORY -> convertTemperature(sourceUnit, targetUnit, value);
+            case MASS_CATEGORY -> convertKilogramsToTargetUnit(targetUnit, convertMassToKilograms(sourceUnit, value));
+            default -> throw new IllegalStateException("Neznana kategorija: " + category);
+        };
+    }
 
-        if (TEMPERATURE_CATEGORY.equals(category)) {
-            if (CELSIUS_UNIT.equals(sourceUnit) && FAHRENHEIT_UNIT.equals(targetUnit)) {
-                return (value * 9.0 / 5.0) + 32.0;
-            }
-            if (FAHRENHEIT_UNIT.equals(sourceUnit) && CELSIUS_UNIT.equals(targetUnit)) {
-                return (value - 32.0) * 5.0 / 9.0;
-            }
+    private double convertTemperature(String sourceUnit, String targetUnit, double value) {
+        if (CELSIUS_UNIT.equals(sourceUnit) && FAHRENHEIT_UNIT.equals(targetUnit)) {
+            return (value * 9.0 / 5.0) + 32.0;
         }
-
-        if (MASS_CATEGORY.equals(category)) {
-            double valueInKilograms = convertMassToKilograms(sourceUnit, value);
-            return convertKilogramsToTargetUnit(targetUnit, valueInKilograms);
+        if (FAHRENHEIT_UNIT.equals(sourceUnit) && CELSIUS_UNIT.equals(targetUnit)) {
+            return (value - 32.0) * 5.0 / 9.0;
         }
-
-        return value;
+        throw new IllegalStateException("Nepodprta temperaturna pretvorba: " + sourceUnit + " -> " + targetUnit);
     }
 
     private double convertLengthToMeters(String unit, double value) {
-        if (METER_UNIT.equals(unit)) {
-            return value;
-        }
-        if (CENTIMETER_UNIT.equals(unit)) {
-            return value / 100.0;
-        }
-        if (INCH_UNIT.equals(unit)) {
-            return value * 0.0254;
-        }
-        if (FOOT_UNIT.equals(unit)) {
-            return value * 0.3048;
-        }
-        return value;
+        return switch (unit) {
+            case METER_UNIT -> value;
+            case CENTIMETER_UNIT -> value / 100.0;
+            case INCH_UNIT -> value * 0.0254;
+            case FOOT_UNIT -> value * 0.3048;
+            default -> throw new IllegalStateException("Nepodprta enota dolžine: " + unit);
+        };
     }
 
     private double convertMetersToTargetUnit(String unit, double valueInMeters) {
-        if (METER_UNIT.equals(unit)) {
-            return valueInMeters;
-        }
-        if (CENTIMETER_UNIT.equals(unit)) {
-            return valueInMeters * 100.0;
-        }
-        if (INCH_UNIT.equals(unit)) {
-            return valueInMeters / 0.0254;
-        }
-        if (FOOT_UNIT.equals(unit)) {
-            return valueInMeters / 0.3048;
-        }
-        return valueInMeters;
+        return switch (unit) {
+            case METER_UNIT -> valueInMeters;
+            case CENTIMETER_UNIT -> valueInMeters * 100.0;
+            case INCH_UNIT -> valueInMeters / 0.0254;
+            case FOOT_UNIT -> valueInMeters / 0.3048;
+            default -> throw new IllegalStateException("Nepodprta enota dolžine: " + unit);
+        };
     }
 
     private double convertMassToKilograms(String unit, double value) {
-        if (KILOGRAM_UNIT.equals(unit)) {
-            return value;
-        }
-        if (GRAM_UNIT.equals(unit)) {
-            return value / 1000.0;
-        }
-        if (OUNCE_UNIT.equals(unit)) {
-            return value * 0.028349523125;
-        }
-        return value;
+        return switch (unit) {
+            case KILOGRAM_UNIT -> value;
+            case GRAM_UNIT -> value / 1000.0;
+            case OUNCE_UNIT -> value * 0.028349523125;
+            default -> throw new IllegalStateException("Nepodprta enota mase: " + unit);
+        };
     }
 
     private double convertKilogramsToTargetUnit(String unit, double valueInKilograms) {
-        if (KILOGRAM_UNIT.equals(unit)) {
-            return valueInKilograms;
-        }
-        if (GRAM_UNIT.equals(unit)) {
-            return valueInKilograms * 1000.0;
-        }
-        if (OUNCE_UNIT.equals(unit)) {
-            return valueInKilograms / 0.028349523125;
-        }
-        return valueInKilograms;
+        return switch (unit) {
+            case KILOGRAM_UNIT -> valueInKilograms;
+            case GRAM_UNIT -> valueInKilograms * 1000.0;
+            case OUNCE_UNIT -> valueInKilograms / 0.028349523125;
+            default -> throw new IllegalStateException("Nepodprta enota mase: " + unit);
+        };
     }
 
     @FXML
     private void onOpenClick() {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Odpri zgodovino pretvorb");
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Besedilne datoteke", "*.txt"));
-
-        File selectedFile = fileChooser.showOpenDialog(statusLabel.getScene().getWindow());
+        File selectedFile = chooseFileForOpen("Odpri zgodovino pretvorb", "Besedilne datoteke",
+                TEXT_FILE_EXTENSION_PATTERN);
         if (selectedFile == null) {
             updateStatusAndLog("Odpiranje datoteke je bilo preklicano.");
             return;
@@ -687,17 +533,14 @@ public class PretvornikEnotController {
             updateStatusAndLog("Odprta datoteka: " + selectedFile.getName() + " (" + fileSize + " B), "
                     + loadedEntries + " zapisov.");
         } catch (IOException exception) {
-            updateStatusAndLog("Napaka pri odpiranju datoteke: " + exception.getMessage());
+            updateStatusAndLogError("Napaka pri odpiranju datoteke: " + exception.getMessage());
         }
     }
 
     @FXML
     private void onSaveClick() {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Shrani zgodovino pretvorb");
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Besedilne datoteke", "*.txt"));
-
-        File selectedFile = fileChooser.showSaveDialog(statusLabel.getScene().getWindow());
+        File selectedFile = chooseFileForSave("Shrani zgodovino pretvorb", "Besedilne datoteke",
+                TEXT_FILE_EXTENSION_PATTERN, null);
         if (selectedFile == null) {
             updateStatusAndLog("Shranjevanje datoteke je bilo preklicano.");
             return;
@@ -708,17 +551,14 @@ public class PretvornikEnotController {
             long fileSize = Files.size(selectedFile.toPath());
             updateStatusAndLog("Shranjen zapis: " + selectedFile.getName() + " (" + fileSize + " B).");
         } catch (IOException exception) {
-            updateStatusAndLog("Napaka pri shranjevanju datoteke: " + exception.getMessage());
+            updateStatusAndLogError("Napaka pri shranjevanju datoteke: " + exception.getMessage());
         }
     }
 
     @FXML
     private void onOpenLogClick() {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Odpri dnevnik dogodkov");
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Dnevniške datoteke (*.log)", "*.log"));
-
-        File selectedFile = fileChooser.showOpenDialog(statusLabel.getScene().getWindow());
+        File selectedFile = chooseFileForOpen("Odpri dnevnik dogodkov", "Dnevniške datoteke (*.log)",
+                LOG_FILE_EXTENSION_PATTERN);
         if (selectedFile == null) {
             updateStatusAndLog("Odpiranje dnevnika je bilo preklicano.");
             return;
@@ -727,11 +567,7 @@ public class PretvornikEnotController {
         try {
             List<String> loadedLogLines = Files.readAllLines(selectedFile.toPath(), StandardCharsets.UTF_8);
             replaceEventLogContent(loadedLogLines);
-
-            if (pane3 != null && !pane3.isExpanded()) {
-                pane3.setExpanded(true);
-            }
-            requestAccordionPaneHeightRefresh();
+            expandOnlyPane(pane3);
 
             long fileSize = Files.size(selectedFile.toPath());
             updateStatusAndLog("Odprt dnevnik: " + selectedFile.getName() + " (" + fileSize + " B), "
@@ -743,12 +579,8 @@ public class PretvornikEnotController {
 
     @FXML
     private void onSaveLogClick() {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Shrani dnevnik dogodkov");
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Dnevniške datoteke (*.log)", "*.log"));
-        fileChooser.setInitialFileName("dnevnik.log");
-
-        File selectedFile = fileChooser.showSaveDialog(statusLabel.getScene().getWindow());
+        File selectedFile = chooseFileForSave("Shrani dnevnik dogodkov", "Dnevniške datoteke (*.log)",
+                LOG_FILE_EXTENSION_PATTERN, "dnevnik.log");
         if (selectedFile == null) {
             updateStatusAndLog("Shranjevanje dnevnika je bilo preklicano.");
             return;
@@ -756,7 +588,7 @@ public class PretvornikEnotController {
 
         try {
             File targetLogFile = ensureLogFileExtension(selectedFile);
-            Files.writeString(targetLogFile.toPath(), completeEventLogContent.toString(), StandardCharsets.UTF_8);
+            Files.writeString(targetLogFile.toPath(), serializeEventLogEntries(), StandardCharsets.UTF_8);
             long fileSize = Files.size(targetLogFile.toPath());
             updateStatusAndLog("Shranjen dnevnik: " + targetLogFile.getName() + " (" + fileSize + " B).");
         } catch (IOException exception) {
@@ -764,27 +596,44 @@ public class PretvornikEnotController {
         }
     }
 
+    private File chooseFileForOpen(String title, String extensionDescription, String extensionPattern) {
+        FileChooser fileChooser = createSingleExtensionFileChooser(title, extensionDescription, extensionPattern);
+        return fileChooser.showOpenDialog(statusLabel.getScene().getWindow());
+    }
+
+    private File chooseFileForSave(String title, String extensionDescription, String extensionPattern,
+            String initialFileName) {
+        FileChooser fileChooser = createSingleExtensionFileChooser(title, extensionDescription, extensionPattern);
+        if (initialFileName != null && !initialFileName.isBlank()) {
+            fileChooser.setInitialFileName(initialFileName);
+        }
+        return fileChooser.showSaveDialog(statusLabel.getScene().getWindow());
+    }
+
+    private FileChooser createSingleExtensionFileChooser(String title, String extensionDescription,
+            String extensionPattern) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle(title);
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(extensionDescription, extensionPattern));
+        return fileChooser;
+    }
+
+    private String serializeEventLogEntries() {
+        return String.join(System.lineSeparator(), eventLogEntries);
+    }
+
     private File ensureLogFileExtension(File selectedFile) {
-        if (selectedFile == null) {
-            return null;
-        }
-
-        String selectedName = selectedFile.getName();
-        if (selectedName.toLowerCase().endsWith(LOG_FILE_EXTENSION)) {
-            return selectedFile;
-        }
-
+        String selectedName = selectedFile.getName() + LOG_FILE_EXTENSION;
         String parentPath = selectedFile.getParent();
         if (parentPath == null || parentPath.isBlank()) {
-            return new File(selectedName + LOG_FILE_EXTENSION);
+            return new File(selectedName);
         }
-        return new File(parentPath, selectedName + LOG_FILE_EXTENSION);
+        return new File(parentPath, selectedName);
     }
 
     @FXML
     private void onClearLogClick() {
         eventLogEntries.clear();
-        completeEventLogContent.setLength(0);
         refreshVisibleEventLog();
 
         if (isStatusResetQueued) {
@@ -813,7 +662,7 @@ public class PretvornikEnotController {
         updateStatusAndLog("Odpiram projektno stran...");
 
         Thread openLinkThread = new Thread(() -> {
-            boolean opened = tryOpenProjectUrlWithDesktop() || tryOpenProjectUrlWithXdgOpen();
+            boolean opened = tryOpenProjectUrlWithXdgOpen();
             Platform.runLater(() -> {
                 if (opened) {
                     updateStatusAndLog("Odprt projekt: " + PROJECT_URL);
@@ -824,18 +673,6 @@ public class PretvornikEnotController {
         }, "about-program-link-opener");
         openLinkThread.setDaemon(true);
         openLinkThread.start();
-    }
-
-    private boolean tryOpenProjectUrlWithDesktop() {
-        if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-            return false;
-        }
-        try {
-            Desktop.getDesktop().browse(URI.create(PROJECT_URL));
-            return true;
-        } catch (IOException exception) {
-            return false;
-        }
     }
 
     private boolean tryOpenProjectUrlWithXdgOpen() {
@@ -865,7 +702,7 @@ public class PretvornikEnotController {
 
     private String serializeHistoryEntries() {
         StringBuilder outputBuilder = new StringBuilder();
-        outputBuilder.append("# firstValue\tfirstUnit\tsecondValue\tsecondUnit");
+        outputBuilder.append(HISTORY_FILE_HEADER);
 
         for (HistoryEntry entry : historyEntries) {
             outputBuilder
@@ -883,52 +720,34 @@ public class PretvornikEnotController {
     }
 
     private HistoryEntry parseHistoryLine(String line) {
-        String[] parts = line.split(HISTORY_FILE_DELIMITER);
-        if (parts.length >= 4) {
+        HistoryEntry entry = parseDelimitedHistoryLine(line);
+        if (entry != null) {
+            return entry;
+        }
+
+        appendEventLog("Preskočena neveljavna vrstica zgodovine: " + line);
+        return null;
+    }
+
+    private HistoryEntry parseDelimitedHistoryLine(String line) {
+        String[] parts = line.split(HISTORY_FILE_DELIMITER, -1);
+        if (parts.length == 4) {
             return new HistoryEntry(
                     normalizeNumericText(parts[0].trim()),
                     parts[1].trim(),
                     normalizeNumericText(parts[2].trim()),
                     parts[3].trim());
         }
-
-        if (!line.contains("->")) {
-            appendEventLog("Preskočena neveljavna vrstica zgodovine: " + line);
-            return null;
-        }
-
-        String[] legacyParts = line.split("->");
-        if (legacyParts.length != 2) {
-            appendEventLog("Preskočena neveljavna vrstica zgodovine: " + line);
-            return null;
-        }
-
-        String[] firstSide = splitLegacyDisplayPart(legacyParts[0].trim());
-        String[] secondSide = splitLegacyDisplayPart(legacyParts[1].trim());
-        return new HistoryEntry(
-                normalizeNumericText(firstSide[0]),
-                firstSide[1],
-                normalizeNumericText(secondSide[0]),
-                secondSide[1]);
+        return null;
     }
 
     private String normalizeNumericText(String numericText) {
         try {
             return formatNumber(Double.parseDouble(numericText.replace(',', '.')));
         } catch (NumberFormatException exception) {
+            appendEventLog("Nepodprta številčna vrednost v zapisu zgodovine: " + numericText);
             return numericText;
         }
-    }
-
-    private String[] splitLegacyDisplayPart(String displayPart) {
-        int lastSpaceIndex = displayPart.lastIndexOf(' ');
-        if (lastSpaceIndex <= 0 || lastSpaceIndex >= displayPart.length() - 1) {
-            return new String[] { displayPart, "" };
-        }
-
-        String numericPart = displayPart.substring(0, lastSpaceIndex).trim();
-        String unitPart = displayPart.substring(lastSpaceIndex + 1).trim();
-        return new String[] { numericPart, unitPart };
     }
 
     private String formatNumber(double numberValue) {
@@ -976,7 +795,6 @@ public class PretvornikEnotController {
         for (int index = historyEntries.size() - 1; index >= 0; index--) {
             addHistoryTile(historyEntries.get(index));
         }
-        requestAccordionPaneHeightRefresh();
     }
 
     private void addHistoryTile(HistoryEntry entry) {
@@ -1048,6 +866,25 @@ public class PretvornikEnotController {
                 return secondValueText;
             }
             return secondValueText + " " + secondUnit;
+        }
+
+        @Override
+        public boolean equals(Object otherObject) {
+            if (this == otherObject) {
+                return true;
+            }
+            if (!(otherObject instanceof HistoryEntry otherEntry)) {
+                return false;
+            }
+            return Objects.equals(firstValueText, otherEntry.firstValueText)
+                    && Objects.equals(firstUnit, otherEntry.firstUnit)
+                    && Objects.equals(secondValueText, otherEntry.secondValueText)
+                    && Objects.equals(secondUnit, otherEntry.secondUnit);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(firstValueText, firstUnit, secondValueText, secondUnit);
         }
     }
 
