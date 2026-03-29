@@ -54,6 +54,17 @@ public class PretvornikEnotController {
     private static final String GRAM_UNIT = "g";
     private static final String OUNCE_UNIT = "oz";
 
+    private static final Map<String, Double> LENGTH_TO_BASE_FACTOR = Map.of(
+            METER_UNIT, 1.0,
+            CENTIMETER_UNIT, 0.01,
+            INCH_UNIT, 0.0254,
+            FOOT_UNIT, 0.3048);
+
+    private static final Map<String, Double> MASS_TO_BASE_FACTOR = Map.of(
+            KILOGRAM_UNIT, 1.0,
+            GRAM_UNIT, 0.001,
+            OUNCE_UNIT, 0.028349523125);
+
     private static final String AUTHOR_INFORMATION = "Avtor: Mai Rupnik, 2. letnik, BVS-RI @ FRI UNI-LJ";
     private static final String PROJECT_URL = "https://github.com/mairup/uv-naloga-2";
     private static final String HISTORY_FILE_DELIMITER = "\t";
@@ -343,37 +354,30 @@ public class PretvornikEnotController {
 
         isSynchronizingUnitSelection = true;
         try {
-            sourceUnitComboBox.getItems().setAll(units);
-            if (!units.isEmpty()) {
-                if (previouslySelectedSourceUnit != null && units.contains(previouslySelectedSourceUnit)) {
-                    sourceUnitComboBox.getSelectionModel().select(previouslySelectedSourceUnit);
-                } else {
-                    sourceUnitComboBox.getSelectionModel().selectFirst();
-                }
-            } else {
-                sourceUnitComboBox.getSelectionModel().clearSelection();
-            }
+            restoreComboBoxSelection(sourceUnitComboBox, units, previouslySelectedSourceUnit);
 
             String currentlySelectedSourceUnit = sourceUnitComboBox.getValue();
             List<String> targetUnits = units.stream()
                     .filter(unit -> !Objects.equals(unit, currentlySelectedSourceUnit))
                     .toList();
-
-            targetUnitComboBox.getItems().setAll(targetUnits);
-            if (!targetUnits.isEmpty()) {
-                if (previouslySelectedTargetUnit != null && targetUnits.contains(previouslySelectedTargetUnit)) {
-                    targetUnitComboBox.getSelectionModel().select(previouslySelectedTargetUnit);
-                } else {
-                    targetUnitComboBox.getSelectionModel().selectFirst();
-                }
-            } else {
-                targetUnitComboBox.getSelectionModel().clearSelection();
-            }
+            restoreComboBoxSelection(targetUnitComboBox, targetUnits, previouslySelectedTargetUnit);
         } finally {
             isSynchronizingUnitSelection = false;
         }
 
         updateLiveConversionPreview();
+    }
+
+    private void restoreComboBoxSelection(ComboBox<String> comboBox, List<String> availableItems,
+            String previousSelection) {
+        comboBox.getItems().setAll(availableItems);
+        if (availableItems.isEmpty()) {
+            comboBox.getSelectionModel().clearSelection();
+        } else if (previousSelection != null && availableItems.contains(previousSelection)) {
+            comboBox.getSelectionModel().select(previousSelection);
+        } else {
+            comboBox.getSelectionModel().selectFirst();
+        }
     }
 
     @FXML
@@ -483,16 +487,16 @@ public class PretvornikEnotController {
         expandOnlyPane(pane1);
         resetDirectionToFirstDownwardIfNeeded();
 
-        String targetCategory = getCategoryForUnit(entry.getFirstUnit());
+        String targetCategory = getCategoryForUnit(entry.firstUnit());
         if (targetCategory != null && !targetCategory.equals(categoryComboBox.getValue())) {
             categoryComboBox.getSelectionModel().select(targetCategory);
             updateUnitsForSelectedCategory();
         }
 
-        firstValueTextField.setText(entry.getFirstValueText());
-        secondValueTextField.setText(entry.getSecondValueText());
-        selectUnitIfAvailable(firstUnitComboBox, entry.getFirstUnit());
-        selectUnitIfAvailable(secondUnitComboBox, entry.getSecondUnit());
+        firstValueTextField.setText(entry.firstValueText());
+        secondValueTextField.setText(entry.secondValueText());
+        selectUnitIfAvailable(firstUnitComboBox, entry.firstUnit());
+        selectUnitIfAvailable(secondUnitComboBox, entry.secondUnit());
         applyPreviewStyleToCurrentTarget(false);
 
         updateStatusAndLog("Obnovljena pretvorba: " + entry.getFirstDisplay() + " -> " + entry.getSecondDisplay()
@@ -674,11 +678,23 @@ public class PretvornikEnotController {
         }
 
         return switch (category) {
-            case LENGTH_CATEGORY -> convertMetersToTargetUnit(targetUnit, convertLengthToMeters(sourceUnit, value));
+            case LENGTH_CATEGORY ->
+                convertViaBaseFactor(sourceUnit, targetUnit, value, LENGTH_TO_BASE_FACTOR, "dolžine");
             case TEMPERATURE_CATEGORY -> convertTemperature(sourceUnit, targetUnit, value);
-            case MASS_CATEGORY -> convertKilogramsToTargetUnit(targetUnit, convertMassToKilograms(sourceUnit, value));
+            case MASS_CATEGORY -> convertViaBaseFactor(sourceUnit, targetUnit, value, MASS_TO_BASE_FACTOR, "mase");
             default -> throw new IllegalStateException("Neznana kategorija: " + category);
         };
+    }
+
+    private double convertViaBaseFactor(String sourceUnit, String targetUnit, double value,
+            Map<String, Double> factors, String categoryLabel) {
+        Double sourceFactor = factors.get(sourceUnit);
+        Double targetFactor = factors.get(targetUnit);
+        if (sourceFactor == null || targetFactor == null) {
+            throw new IllegalStateException(
+                    "Nepodprta enota " + categoryLabel + ": " + sourceUnit + " -> " + targetUnit);
+        }
+        return value * sourceFactor / targetFactor;
     }
 
     private double convertTemperature(String sourceUnit, String targetUnit, double value) {
@@ -689,44 +705,6 @@ public class PretvornikEnotController {
             return (value - 32.0) * 5.0 / 9.0;
         }
         throw new IllegalStateException("Nepodprta temperaturna pretvorba: " + sourceUnit + " -> " + targetUnit);
-    }
-
-    private double convertLengthToMeters(String unit, double value) {
-        return switch (unit) {
-            case METER_UNIT -> value;
-            case CENTIMETER_UNIT -> value / 100.0;
-            case INCH_UNIT -> value * 0.0254;
-            case FOOT_UNIT -> value * 0.3048;
-            default -> throw new IllegalStateException("Nepodprta enota dolžine: " + unit);
-        };
-    }
-
-    private double convertMetersToTargetUnit(String unit, double valueInMeters) {
-        return switch (unit) {
-            case METER_UNIT -> valueInMeters;
-            case CENTIMETER_UNIT -> valueInMeters * 100.0;
-            case INCH_UNIT -> valueInMeters / 0.0254;
-            case FOOT_UNIT -> valueInMeters / 0.3048;
-            default -> throw new IllegalStateException("Nepodprta enota dolžine: " + unit);
-        };
-    }
-
-    private double convertMassToKilograms(String unit, double value) {
-        return switch (unit) {
-            case KILOGRAM_UNIT -> value;
-            case GRAM_UNIT -> value / 1000.0;
-            case OUNCE_UNIT -> value * 0.028349523125;
-            default -> throw new IllegalStateException("Nepodprta enota mase: " + unit);
-        };
-    }
-
-    private double convertKilogramsToTargetUnit(String unit, double valueInKilograms) {
-        return switch (unit) {
-            case KILOGRAM_UNIT -> valueInKilograms;
-            case GRAM_UNIT -> valueInKilograms * 1000.0;
-            case OUNCE_UNIT -> valueInKilograms / 0.028349523125;
-            default -> throw new IllegalStateException("Nepodprta enota mase: " + unit);
-        };
     }
 
     @FXML
@@ -928,13 +906,13 @@ public class PretvornikEnotController {
         for (HistoryEntry entry : historyEntries) {
             outputBuilder
                     .append(System.lineSeparator())
-                    .append(entry.getFirstValueText())
+                    .append(entry.firstValueText())
                     .append(HISTORY_FILE_DELIMITER)
-                    .append(entry.getFirstUnit())
+                    .append(entry.firstUnit())
                     .append(HISTORY_FILE_DELIMITER)
-                    .append(entry.getSecondValueText())
+                    .append(entry.secondValueText())
                     .append(HISTORY_FILE_DELIMITER)
-                    .append(entry.getSecondUnit());
+                    .append(entry.secondUnit());
         }
 
         return outputBuilder.toString();
@@ -1046,66 +1024,13 @@ public class PretvornikEnotController {
         historyTilesContainer.getChildren().add(tileRow);
     }
 
-    private static final class HistoryEntry {
-        private final String firstValueText;
-        private final String firstUnit;
-        private final String secondValueText;
-        private final String secondUnit;
-
-        private HistoryEntry(String firstValueText, String firstUnit, String secondValueText, String secondUnit) {
-            this.firstValueText = firstValueText;
-            this.firstUnit = firstUnit;
-            this.secondValueText = secondValueText;
-            this.secondUnit = secondUnit;
+    private record HistoryEntry(String firstValueText, String firstUnit, String secondValueText, String secondUnit) {
+        String getFirstDisplay() {
+            return firstUnit == null || firstUnit.isBlank() ? firstValueText : firstValueText + " " + firstUnit;
         }
 
-        private String getFirstValueText() {
-            return firstValueText;
-        }
-
-        private String getFirstUnit() {
-            return firstUnit;
-        }
-
-        private String getSecondValueText() {
-            return secondValueText;
-        }
-
-        private String getSecondUnit() {
-            return secondUnit;
-        }
-
-        private String getFirstDisplay() {
-            if (firstUnit == null || firstUnit.isBlank()) {
-                return firstValueText;
-            }
-            return firstValueText + " " + firstUnit;
-        }
-
-        private String getSecondDisplay() {
-            if (secondUnit == null || secondUnit.isBlank()) {
-                return secondValueText;
-            }
-            return secondValueText + " " + secondUnit;
-        }
-
-        @Override
-        public boolean equals(Object otherObject) {
-            if (this == otherObject) {
-                return true;
-            }
-            if (!(otherObject instanceof HistoryEntry otherEntry)) {
-                return false;
-            }
-            return Objects.equals(firstValueText, otherEntry.firstValueText)
-                    && Objects.equals(firstUnit, otherEntry.firstUnit)
-                    && Objects.equals(secondValueText, otherEntry.secondValueText)
-                    && Objects.equals(secondUnit, otherEntry.secondUnit);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(firstValueText, firstUnit, secondValueText, secondUnit);
+        String getSecondDisplay() {
+            return secondUnit == null || secondUnit.isBlank() ? secondValueText : secondValueText + " " + secondUnit;
         }
     }
 
